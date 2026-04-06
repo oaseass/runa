@@ -1,0 +1,145 @@
+import { NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/server/otp-rate-limit";
+import { generateOtpCode, getOtpSession, upsertOtpSession } from "@/lib/server/otp-store";
+import { sendOtpMessage, SolapiError } from "@/lib/server/solapi";
+import { isValidPhoneNumber, normalizePhoneNumber, sanitizeNationalNumber } from "@/lib/onboarding/phone";
+
+type SendOtpRequest = {
+  countryCode?: string;
+  nationalNumber?: string;
+};
+
+function getClientKey(request: Request, phoneNumber: string) {
+  const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
+  return `${forwardedFor}:${phoneNumber}`;
+}
+
+function getEnvNumber(name: string, fallback: number) {
+  const value = Number(process.env[name]);
+  if (!Number.isFinite(value) || value <= 0) {
+    return fallback;
+  }
+  return value;
+}
+
+export async function POST(request: Request) {
+  const body = (await request.json()) as SendOtpRequest;
+  const countryCode = body.countryCode?.trim() ?? "";
+  const nationalNumber = sanitizeNationalNumber(body.nationalNumber ?? "");
+
+  if (!countryCode || !nationalNumber) {
+    return NextResponse.json({ success: false, error: "Phone number is required" }, { status: 400 });
+  }
+
+  const fullPhoneNumber = normalizePhoneNumber(nationalNumber, countryCode);
+
+  if (!isValidPhoneNumber(fullPhoneNumber)) {
+    return NextResponse.json({ success: false, error: "Invalid phone number" }, { status: 400 });
+  }
+
+  const otpExpiresSeconds = getEnvNumber("OTP_EXPIRES_SECONDS", 300);
+  const resendCooldownSeconds = getEnvNumber("OTP_RESEND_COOLDOWN_SECONDS", 60);
+
+  const existing = getOtpSession(fullPhoneNumber);
+  if (existing && Date.now() < existing.resendAvailableAt) {
+    return NextResponse.json(
+      {
+        success: false,
+        canProceedToVerify: true,
+        countryCode: existing.countryCode,
+        nationalNumber: existing.nationalNumber,
+        fullPhoneNumber: existing.fullPhoneNumber,
+        otpSentAt: existing.otpSentAt,
+        otpExpiresAt: existing.otpExpiresAt,
+        error: "Please wait before requesting a new code",
+        resendAvailableAt: existing.resendAvailableAt,
+      },
+      { status: 429 },
+    );
+  }
+
+  const rateKey = getClientKey(request, fullPhoneNumber);
+  const rate = checkRateLimit(rateKey, 5, 60_000);
+  if (!rate.allowed) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Too many requests. Try again shortly.",
+      },
+      { status: 429 },
+    );
+  }
+
+  const otpCode = generateOtpCode();
+  const now = Date.now();
+  const otpExpiresAt = now + otpExpiresSeconds * 1000;
+  const resendAvailableAt = now + resendCooldownSeconds * 1000;
+
+  try {
+    const providerResult = await sendOtpMessage({
+      to: fullPhoneNumber,
+      otpCode,
+    });
+
+    console.info("[auth/send-otp] solapi accepted", {
+      fullPhoneNumber,
+      messageId: providerResult.messageId,
+      groupId: providerResult.groupId,
+      status: providerResult.status,
+    });
+
+    upsertOtpSession({
+      countryCode,
+      nationalNumber,
+      fullPhoneNumber,
+      otpCode,
+      otpSentAt: now,
+      otpExpiresAt,
+      resendAvailableAt,
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        countryCode,
+        nationalNumber,
+        fullPhoneNumber,
+        otpSentAt: now,
+        otpExpiresAt,
+        resendAvailableAt,
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    if (error instanceof SolapiError) {
+      console.error("[auth/send-otp] solapi error", {
+        status: error.status,
+        message: error.message,
+        fullPhoneNumber,
+      });
+
+      const clientError =
+        error.status === 400
+          ? "Message provider rejected this send. Check SOLAPI sender and account settings."
+          : "Unable to send verification code right now";
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: clientError,
+        },
+        { status: error.status >= 400 && error.status < 500 ? error.status : 503 },
+      );
+    }
+
+    console.error("[auth/send-otp] unexpected error", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Unable to send verification code right now",
+      },
+      { status: 503 },
+    );
+  }
+}

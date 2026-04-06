@@ -1,0 +1,42 @@
+{
+  "name": "luna",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "npx tsx --test src/lib/astrology/__tests__/calculate.test.ts src/lib/astrology/__tests__/personalization-audit.ts",
+    "test:entitlement": "npx tsx --test src/lib/__tests__/entitlement.test.ts",
+    "test:seed": "npx tsx src/lib/__tests__/seed-test-users.ts",
+    "test:cookie": "npx tsx src/lib/__tests__/gen-session-cookie.ts",
+    "test:e2e": "npx playwright test --config playwright.config.ts",
+    "test:e2e:shop": "npx playwright test --config playwright.config.ts shop-status",
+    "test:e2e:pages": "npx playwright test --config playwright.config.ts me-void-home",
+    "test:e2e:sync": "npx playwright test --config playwright.config.ts state-sync",
+    "test:e2e:admin": "npx playwright test --config playwright.config.ts admin-metrics"
+  },
+  "dependencies": {
+    "@tosspayments/tosspayments-sdk": "^2.6.0",
+    "astronomy-engine": "^2.1.19",
+    "better-sqlite3": "^12.8.0",
+    "next": "16.2.0",
+    "pretendard": "^1.3.9",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "1.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

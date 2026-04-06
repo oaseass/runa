@@ -1,0 +1,30 @@
+/**
+ * GET /api/chart/today-deep?date=YYYY-MM-DD
+ * Returns a unified TodayDeepReport where ALL editorial sections derive from
+ * the same primary transit. Single source of truth for /home/detail/today.
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
+import { getTodayDeepReport } from "@/lib/server/chart-store";
+
+export async function GET(request: NextRequest) {
+  const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
+  const session = verifySessionToken(token);
+  if (!session) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const dateParam = request.nextUrl.searchParams.get("date");
+  const date = dateParam ? new Date(dateParam) : new Date();
+  const resolvedDate = isNaN(date.getTime()) ? new Date() : date;
+
+  const report = getTodayDeepReport(session.userId, resolvedDate);
+  if (!report) {
+    return NextResponse.json(
+      { success: false, error: "Birth data incomplete or no active transits." },
+      { status: 422 },
+    );
+  }
+
+  return NextResponse.json({ success: true, report });
+}

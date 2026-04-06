@@ -1,0 +1,11 @@
+<svg width="220" height="220" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="orb object">
+  <defs>
+    <radialGradient id="orb" cx="35%" cy="30%" r="72%">
+      <stop offset="0%" stop-color="#F4F4F3"/>
+      <stop offset="70%" stop-color="#B7B8B8"/>
+      <stop offset="100%" stop-color="#8D8E8E"/>
+    </radialGradient>
+  </defs>
+  <circle cx="110" cy="110" r="78" fill="url(#orb)"/>
+  <ellipse cx="110" cy="174" rx="58" ry="13" fill="#101010" fill-opacity="0.14"/>
+</svg>

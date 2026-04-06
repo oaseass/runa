@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <!-- constellation lines -->
+  <line x1="128" y1="198" x2="148" y2="222" stroke="rgba(20,21,22,0.55)" stroke-width="2"/>
+    <line x1="132" y1="205" x2="148" y2="222" stroke="rgba(20,21,22,0.55)" stroke-width="2"/>
+    <line x1="148" y1="222" x2="185" y2="242" stroke="rgba(20,21,22,0.55)" stroke-width="2"/>
+    <line x1="185" y1="242" x2="218" y2="252" stroke="rgba(20,21,22,0.55)" stroke-width="2"/>
+    <line x1="218" y1="252" x2="252" y2="248" stroke="rgba(20,21,22,0.55)" stroke-width="2"/>
+    <line x1="252" y1="248" x2="275" y2="228" stroke="rgba(20,21,22,0.55)" stroke-width="2"/>
+    <line x1="275" y1="228" x2="278" y2="205" stroke="rgba(20,21,22,0.55)" stroke-width="2"/>
+    <line x1="278" y1="205" x2="258" y2="190" stroke="rgba(20,21,22,0.55)" stroke-width="2"/>
+    <line x1="258" y1="190" x2="225" y2="200" stroke="rgba(20,21,22,0.55)" stroke-width="2"/>
+    <line x1="225" y1="200" x2="192" y2="208" stroke="rgba(20,21,22,0.55)" stroke-width="2"/>
+    <line x1="192" y1="208" x2="148" y2="222" stroke="rgba(20,21,22,0.55)" stroke-width="2"/>
+    <line x1="278" y1="205" x2="225" y2="200" stroke="rgba(20,21,22,0.55)" stroke-width="2"/>
+  <!-- constellation stars -->
+  <circle cx="128" cy="198" r="12" fill="rgba(20,21,22,0.12)"/>
+    <circle cx="128" cy="198" r="5.6" fill="rgba(20,21,22,0.88)"/>
+    <circle cx="132" cy="205" r="10.5" fill="rgba(20,21,22,0.12)"/>
+    <circle cx="132" cy="205" r="4.8999999999999995" fill="rgba(20,21,22,0.88)"/>
+    <circle cx="148" cy="222" r="10.5" fill="rgba(20,21,22,0.12)"/>
+    <circle cx="148" cy="222" r="4.8999999999999995" fill="rgba(20,21,22,0.88)"/>
+    <circle cx="185" cy="242" r="9" fill="rgba(20,21,22,0.12)"/>
+    <circle cx="185" cy="242" r="4.199999999999999" fill="rgba(20,21,22,0.88)"/>
+    <circle cx="218" cy="252" r="10.5" fill="rgba(20,21,22,0.12)"/>
+    <circle cx="218" cy="252" r="4.8999999999999995" fill="rgba(20,21,22,0.88)"/>
+    <circle cx="252" cy="248" r="10.5" fill="rgba(20,21,22,0.12)"/>
+    <circle cx="252" cy="248" r="4.8999999999999995" fill="rgba(20,21,22,0.88)"/>
+    <circle cx="275" cy="228" r="10.5" fill="rgba(20,21,22,0.12)"/>
+    <circle cx="275" cy="228" r="4.8999999999999995" fill="rgba(20,21,22,0.88)"/>
+    <circle cx="278" cy="205" r="9" fill="rgba(20,21,22,0.12)"/>
+    <circle cx="278" cy="205" r="4.199999999999999" fill="rgba(20,21,22,0.88)"/>
+    <circle cx="258" cy="190" r="12" fill="rgba(20,21,22,0.12)"/>
+    <circle cx="258" cy="190" r="5.6" fill="rgba(20,21,22,0.88)"/>
+    <circle cx="225" cy="200" r="9" fill="rgba(20,21,22,0.12)"/>
+    <circle cx="225" cy="200" r="4.199999999999999" fill="rgba(20,21,22,0.88)"/>
+    <circle cx="192" cy="208" r="9" fill="rgba(20,21,22,0.12)"/>
+    <circle cx="192" cy="208" r="4.199999999999999" fill="rgba(20,21,22,0.88)"/>
+</svg>
