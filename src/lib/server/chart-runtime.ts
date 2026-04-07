@@ -27,7 +27,6 @@ import {
   type StoredAuthAccount,
   type StoredOnboardingProfile,
 } from "@/lib/server/auth-storage";
-import { getOrComputeNatalChart } from "@/lib/server/chart-store";
 
 type RuntimeBirthProfile = {
   birthDate: string | null;
@@ -120,6 +119,7 @@ export async function getNatalChartForUser(userId: string): Promise<NatalChart |
   }
 
   try {
+    const { getOrComputeNatalChart } = await import("@/lib/server/chart-store");
     return getOrComputeNatalChart(userId);
   } catch {
     return null;
