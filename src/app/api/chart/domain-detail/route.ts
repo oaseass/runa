@@ -4,7 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
-import { getDomainDetail } from "@/lib/server/chart-store";
+import { getDomainDetailForUser } from "@/lib/server/chart-runtime";
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   const date = dateParam ? new Date(dateParam) : new Date();
   const resolvedDate = isNaN(date.getTime()) ? new Date() : date;
 
-  const detail = getDomainDetail(session.userId, domainKey, resolvedDate);
+  const detail = await getDomainDetailForUser(session.userId, domainKey, resolvedDate);
   if (!detail) {
     return NextResponse.json(
       { success: false, error: "Birth data incomplete." },

@@ -4,7 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
-import { getTodayInterpretation, getDateInterpretation } from "@/lib/server/chart-store";
+import { getTransitInterpretationForUser } from "@/lib/server/chart-runtime";
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
@@ -16,9 +16,8 @@ export async function GET(request: NextRequest) {
 
   const dateParam = request.nextUrl.searchParams.get("date");
   const date = dateParam ? new Date(dateParam) : new Date();
-  const interpretation = isNaN(date.getTime())
-    ? getTodayInterpretation(session.userId)
-    : getDateInterpretation(session.userId, date);
+  const resolvedDate = isNaN(date.getTime()) ? new Date() : date;
+  const interpretation = await getTransitInterpretationForUser(session.userId, resolvedDate);
   if (!interpretation) {
     return NextResponse.json(
       { success: false, error: "Birth data incomplete. Complete onboarding to generate today's reading." },

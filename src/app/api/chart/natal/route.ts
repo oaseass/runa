@@ -1,6 +1,6 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
-import { getOrComputeNatalChart } from "@/lib/server/chart-store";
+import { getNatalChartForUser } from "@/lib/server/chart-runtime";
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   if (!session) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
-  const natal = getOrComputeNatalChart(session.userId);
+  const natal = await getNatalChartForUser(session.userId);
   if (!natal) {
     return NextResponse.json({ success: false, error: "Birth data incomplete." }, { status: 422 });
   }

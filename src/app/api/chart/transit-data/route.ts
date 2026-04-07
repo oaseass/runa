@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
-import { getTransitChartData } from "@/lib/server/chart-store";
+import { getTransitChartDataForUser } from "@/lib/server/chart-runtime";
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
 
   const dateParam = request.nextUrl.searchParams.get("date");
   const date = dateParam ? new Date(dateParam) : new Date();
-  const data = getTransitChartData(session.userId, isNaN(date.getTime()) ? new Date() : date);
+  const resolvedDate = isNaN(date.getTime()) ? new Date() : date;
+  const data = await getTransitChartDataForUser(session.userId, resolvedDate);
   if (!data) {
     return NextResponse.json(
       { success: false, error: "Birth data incomplete." },
