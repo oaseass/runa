@@ -25,15 +25,37 @@ function PhonePageInner() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isLoginFlow) {
-      return;
-    }
+    let cancelled = false;
 
-    const birthPlace = getBirthPlaceSelection();
+    void (async () => {
+      if (isLoginFlow) {
+        try {
+          const response = await fetch("/api/auth/session/me", { cache: "no-store" });
+          if (!response.ok || cancelled) {
+            return;
+          }
 
-    if (!birthPlace) {
-      router.replace("/birth-place");
-    }
+          const data = (await response.json()) as { authenticated?: boolean };
+          if (data.authenticated) {
+            router.replace("/home");
+          }
+        } catch {
+          // ignore session probe failures and keep the login form visible
+        }
+
+        return;
+      }
+
+      const birthPlace = getBirthPlaceSelection();
+
+      if (!birthPlace) {
+        router.replace("/birth-place");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isLoginFlow, router]);
 
   const filteredCountries = useMemo(() => {
@@ -90,14 +112,25 @@ function PhonePageInner() {
         setIsSendingCode(true);
         setErrorMessage(null);
 
-        if (!isLoginFlow) {
-          const res = await fetch(`/api/auth/check-phone?phone=${encodeURIComponent(fullPhoneNumber)}`);
-          const data = (await res.json()) as { exists?: boolean };
+        const phoneCheckResponse = await fetch(`/api/auth/check-phone?phone=${encodeURIComponent(fullPhoneNumber)}`);
+        const phoneCheckData = (await phoneCheckResponse.json()) as {
+          exists?: boolean;
+          error?: string;
+        };
 
-          if (data.exists) {
-            setErrorMessage("이미 가입된 번호예요. 로그인해 주세요.");
+        if (!phoneCheckResponse.ok) {
+          setErrorMessage(phoneCheckData.error ?? "전화번호를 확인할 수 없어요.");
+          return;
+        }
+
+        if (isLoginFlow) {
+          if (!phoneCheckData.exists) {
+            setErrorMessage("등록된 번호를 찾지 못했어요. 가입부터 진행해 주세요.");
             return;
           }
+        } else if (phoneCheckData.exists) {
+          setErrorMessage("이미 가입된 번호예요. 로그인해 주세요.");
+          return;
         }
 
         const response = await fetch("/api/auth/send-otp", {
@@ -185,7 +218,7 @@ function PhonePageInner() {
 
           <p className="dark-copy">
             {isLoginFlow
-              ? "등록된 번호로 인증을 완료하면 바로 메인으로 이동합니다."
+              ? "등록된 번호로 인증 문자를 받아야 로그인됩니다."
               : "가입 확인을 위해 인증 가능한 번호로 문자를 받아야 합니다."}
           </p>
           {errorMessage ? <p className="dark-copy">{errorMessage}</p> : null}
