@@ -108,14 +108,22 @@ async function getRedisStoredAccount(userId: string) {
   }
 }
 
-export async function getNatalChartForUser(userId: string): Promise<NatalChart | null> {
-  const localChart = getOrComputeNatalChart(userId);
-  if (localChart) {
-    return localChart;
-  }
-
+async function getRedisNatalChart(userId: string) {
   const account = await getRedisStoredAccount(userId);
   return computeRuntimeNatalChart(mapStoredOnboardingProfile(account?.onboardingProfile));
+}
+
+export async function getNatalChartForUser(userId: string): Promise<NatalChart | null> {
+  const redisChart = await getRedisNatalChart(userId);
+  if (redisChart) {
+    return redisChart;
+  }
+
+  try {
+    return getOrComputeNatalChart(userId);
+  } catch {
+    return null;
+  }
 }
 
 export async function getTransitInterpretationForUser(userId: string, date: Date): Promise<TransitInterpretation | null> {
