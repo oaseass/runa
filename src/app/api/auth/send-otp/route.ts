@@ -10,6 +10,9 @@ type SendOtpRequest = {
   nationalNumber?: string;
 };
 
+const OTP_SEND_UNAVAILABLE = "지금은 인증 문자를 보낼 수 없어요";
+const OTP_PROVIDER_REJECTED = "문자 발신 설정을 확인해 주세요";
+
 function getClientKey(request: Request, phoneNumber: string) {
   const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
   return `${forwardedFor}:${phoneNumber}`;
@@ -160,8 +163,8 @@ export async function POST(request: Request) {
 
       const clientError =
         error.status === 400
-          ? "Message provider rejected this send. Check SOLAPI sender and account settings."
-          : "Unable to send verification code right now";
+          ? OTP_PROVIDER_REJECTED
+          : OTP_SEND_UNAVAILABLE;
 
       return NextResponse.json(
         {
@@ -177,7 +180,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        error: "Unable to send verification code right now",
+        error: OTP_SEND_UNAVAILABLE,
       },
       { status: 503 },
     );
