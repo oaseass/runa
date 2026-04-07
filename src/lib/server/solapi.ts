@@ -2,11 +2,13 @@ import crypto from "node:crypto";
 
 export class SolapiError extends Error {
   status: number;
+  providerReason: string | null;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, providerReason: string | null = null) {
     super(message);
     this.name = "SolapiError";
     this.status = status;
+    this.providerReason = providerReason;
   }
 }
 
@@ -30,6 +32,47 @@ type SolapiSendResponse = {
   errorCount?: number;
   messages?: SolapiMessageResult[];
 };
+
+function normalizeProviderReason(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized.slice(0, 220);
+}
+
+function parseProviderReason(rawText: string) {
+  const fallback = normalizeProviderReason(rawText);
+
+  try {
+    const parsed = JSON.parse(rawText) as {
+      message?: string;
+      errorMessage?: string;
+      detailMessage?: string;
+      details?: string;
+      statusMessage?: string;
+      error?: { message?: string; detail?: string };
+    };
+
+    return normalizeProviderReason(
+      parsed.errorMessage ||
+      parsed.detailMessage ||
+      parsed.details ||
+      parsed.statusMessage ||
+      parsed.error?.detail ||
+      parsed.error?.message ||
+      parsed.message ||
+      fallback,
+    );
+  } catch {
+    return fallback;
+  }
+}
 
 function getConfig() {
   const apiKey = process.env.SOLAPI_API_KEY?.trim();
@@ -101,7 +144,8 @@ export async function sendOtpMessage(payload: { to: string; otpCode: string }) {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new SolapiError(`SOLAPI send failed (${response.status}): ${text}`, response.status);
+    const providerReason = parseProviderReason(text);
+    throw new SolapiError(`SOLAPI send failed (${response.status}): ${text}`, response.status, providerReason);
   }
 
   const data = (await response.json()) as SolapiSendResponse;
@@ -113,7 +157,7 @@ export async function sendOtpMessage(payload: { to: string; otpCode: string }) {
   if ((!acceptedStatusCode && successCount < 1 && !acceptedSingleMessage) || errorCount > 0) {
     const firstError = data.messages?.find((item) => item.statusCode && item.statusCode !== "2000");
     const reason = firstError?.statusMessage || data.statusMessage || "Provider accepted request but message was not queued";
-    throw new SolapiError(`SOLAPI delivery rejected: ${reason}`, 400);
+    throw new SolapiError(`SOLAPI delivery rejected: ${reason}`, 400, normalizeProviderReason(reason));
   }
 
   return {

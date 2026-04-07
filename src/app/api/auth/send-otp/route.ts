@@ -173,6 +173,7 @@ export async function POST(request: Request) {
         {
           success: false,
           error: clientError,
+          providerReason: error.providerReason,
         },
         { status: error.status >= 400 && error.status < 500 ? error.status : 503 },
       );
