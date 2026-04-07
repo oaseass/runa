@@ -12,6 +12,7 @@ type SendOtpRequest = {
 
 const OTP_SEND_UNAVAILABLE = "지금은 인증 문자를 보낼 수 없어요";
 const OTP_PROVIDER_REJECTED = "문자 발신 설정을 확인해 주세요";
+const OTP_PROVIDER_AUTH_REJECTED = "문자 서비스 인증이 거절됐어요. SOLAPI 키 또는 사용 권한을 확인해 주세요";
 
 function getClientKey(request: Request, phoneNumber: string) {
   const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
@@ -164,7 +165,9 @@ export async function POST(request: Request) {
       const clientError =
         error.status === 400
           ? OTP_PROVIDER_REJECTED
-          : OTP_SEND_UNAVAILABLE;
+          : error.status === 401 || error.status === 403
+            ? OTP_PROVIDER_AUTH_REJECTED
+            : OTP_SEND_UNAVAILABLE;
 
       return NextResponse.json(
         {
