@@ -159,6 +159,7 @@ export async function POST(request: Request) {
       console.error("[auth/send-otp] solapi error", {
         status: error.status,
         message: error.message,
+        providerReason: error.providerReason,
         fullPhoneNumber,
       });
 
@@ -173,7 +174,6 @@ export async function POST(request: Request) {
         {
           success: false,
           error: clientError,
-          providerReason: error.providerReason,
         },
         { status: error.status >= 400 && error.status < 500 ? error.status : 503 },
       );
