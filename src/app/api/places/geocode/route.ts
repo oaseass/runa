@@ -4,6 +4,7 @@
  * Returns { success, latitude, longitude, timezone }
  */
 import { NextResponse } from "next/server";
+import { getGoogleMapsApiKey } from "@/lib/places/service";
 
 type PlaceDetailsResponse = {
   location?: {
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: "placeId is required" }, { status: 400 });
   }
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = getGoogleMapsApiKey();
   if (!apiKey) {
     return NextResponse.json({ success: false, error: "Geocoding unavailable" }, { status: 503 });
   }

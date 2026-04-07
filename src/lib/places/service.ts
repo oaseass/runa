@@ -43,6 +43,10 @@ export class PlacesProviderError extends Error {
   }
 }
 
+export function getGoogleMapsApiKey() {
+  return process.env.GOOGLE_MAPS_API_KEY?.trim() || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() || "";
+}
+
 const GOOGLE_AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete";
 const MAX_RESULTS = 5;
 
@@ -133,7 +137,7 @@ function classifyProviderError(status: number): PlacesProviderErrorCode {
 }
 
 export async function fetchPlaceSuggestions(input: string, sessionToken: string): Promise<PlaceResult[]> {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = getGoogleMapsApiKey();
 
   if (!apiKey) {
     throw new PlacesProviderError("GOOGLE_MAPS_API_KEY is not configured", "MISSING_API_KEY", 500);

@@ -3,6 +3,7 @@ import { fetchPlaceSuggestions, PlacesProviderError } from "@/lib/places/service
 import type { PlacesAutocompleteResponse } from "@/types/places";
 
 const MIN_QUERY_LENGTH = 2;
+const PLACE_SEARCH_UNAVAILABLE = "지금은 출생지 검색을 사용할 수 없어요";
 
 function createSessionToken() {
   return crypto.randomUUID();
@@ -14,10 +15,10 @@ function jsonResponse(payload: PlacesAutocompleteResponse, status: number) {
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof PlacesProviderError && error.code === "MISSING_API_KEY") {
-    return "GOOGLE_MAPS_API_KEY is missing";
+    return PLACE_SEARCH_UNAVAILABLE;
   }
 
-  return "Search is temporarily unavailable";
+  return PLACE_SEARCH_UNAVAILABLE;
 }
 
 export async function GET(request: Request) {
@@ -63,10 +64,10 @@ export async function GET(request: Request) {
           {
             success: false,
             results: [],
-            error: "GOOGLE_MAPS_API_KEY is missing",
+            error: PLACE_SEARCH_UNAVAILABLE,
             sessionToken,
           },
-          500,
+          503,
         );
       }
 
@@ -75,7 +76,7 @@ export async function GET(request: Request) {
           {
             success: false,
             results: [],
-            error: "Search is temporarily unavailable",
+            error: PLACE_SEARCH_UNAVAILABLE,
             sessionToken,
           },
           503,
@@ -87,7 +88,7 @@ export async function GET(request: Request) {
           {
             success: false,
             results: [],
-            error: "Search is temporarily unavailable",
+            error: PLACE_SEARCH_UNAVAILABLE,
             sessionToken,
           },
           429,
@@ -99,7 +100,7 @@ export async function GET(request: Request) {
           {
             success: false,
             results: [],
-            error: "Search is temporarily unavailable",
+            error: PLACE_SEARCH_UNAVAILABLE,
             sessionToken,
           },
           503,
