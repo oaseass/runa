@@ -262,8 +262,8 @@ export async function createAccountDraft(input: {
 
 export async function getAccountDraft(id: string) {
   const redisAccount = await getRedisAccountById(id);
-  if (redisAccount) {
-    return toPublicAccount(redisAccount);
+  if (getExternalAuthStorage()) {
+    return redisAccount ? toPublicAccount(redisAccount) : null;
   }
 
   const db = await getLocalDb();
@@ -287,8 +287,8 @@ export async function getAccountDraft(id: string) {
 
 export async function hasAccountDraftByPhoneNumber(phoneNumber: string) {
   const redisAccount = await getRedisAccountByPhone(phoneNumber);
-  if (redisAccount) {
-    return true;
+  if (getExternalAuthStorage()) {
+    return Boolean(redisAccount);
   }
 
   const db = await getLocalDb();
@@ -301,8 +301,8 @@ export async function hasAccountDraftByPhoneNumber(phoneNumber: string) {
 
 export async function findAccountDraftByPhoneNumber(phoneNumber: string) {
   const redisAccount = await getRedisAccountByPhone(phoneNumber);
-  if (redisAccount) {
-    return toPublicAccount(redisAccount);
+  if (getExternalAuthStorage()) {
+    return redisAccount ? toPublicAccount(redisAccount) : null;
   }
 
   const db = await getLocalDb();
@@ -326,15 +326,17 @@ export async function findAccountDraftByPhoneNumber(phoneNumber: string) {
 
 export async function findAccountDraftByUsername(username: string) {
   const redisAccount = await getRedisAccountByUsername(username);
-  if (redisAccount) {
-    return {
-      id: redisAccount.id,
-      username: redisAccount.username,
-      phoneNumber: redisAccount.phoneNumber,
-      passwordHash: redisAccount.passwordHash,
-      passwordSalt: redisAccount.passwordSalt,
-      createdAt: redisAccount.createdAt,
-    };
+  if (getExternalAuthStorage()) {
+    return redisAccount
+      ? {
+        id: redisAccount.id,
+        username: redisAccount.username,
+        phoneNumber: redisAccount.phoneNumber,
+        passwordHash: redisAccount.passwordHash,
+        passwordSalt: redisAccount.passwordSalt,
+        createdAt: redisAccount.createdAt,
+      }
+      : null;
   }
 
   const db = await getLocalDb();
