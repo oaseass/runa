@@ -32,9 +32,9 @@ type SolapiSendResponse = {
 };
 
 function getConfig() {
-  const apiKey = process.env.SOLAPI_API_KEY;
-  const apiSecret = process.env.SOLAPI_API_SECRET;
-  const sender = process.env.SOLAPI_SENDER;
+  const apiKey = process.env.SOLAPI_API_KEY?.trim();
+  const apiSecret = process.env.SOLAPI_API_SECRET?.trim();
+  const sender = process.env.SOLAPI_SENDER?.trim();
 
   if (!apiKey || !apiSecret || !sender) {
     throw new SolapiError("SOLAPI credentials are not configured", 500);
