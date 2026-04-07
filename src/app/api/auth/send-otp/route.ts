@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/server/otp-rate-limit";
 import { generateOtpCode, getOtpSession, upsertOtpSession } from "@/lib/server/otp-store";
 import { sendOtpMessage, SolapiError } from "@/lib/server/solapi";
+import { AuthStorageConfigurationError } from "@/lib/server/auth-storage";
 import { isValidPhoneNumber, normalizePhoneNumber, sanitizeNationalNumber } from "@/lib/onboarding/phone";
 
 type SendOtpRequest = {
@@ -40,24 +41,6 @@ export async function POST(request: Request) {
   const otpExpiresSeconds = getEnvNumber("OTP_EXPIRES_SECONDS", 300);
   const resendCooldownSeconds = getEnvNumber("OTP_RESEND_COOLDOWN_SECONDS", 60);
 
-  const existing = getOtpSession(fullPhoneNumber);
-  if (existing && Date.now() < existing.resendAvailableAt) {
-    return NextResponse.json(
-      {
-        success: false,
-        canProceedToVerify: true,
-        countryCode: existing.countryCode,
-        nationalNumber: existing.nationalNumber,
-        fullPhoneNumber: existing.fullPhoneNumber,
-        otpSentAt: existing.otpSentAt,
-        otpExpiresAt: existing.otpExpiresAt,
-        error: "Please wait before requesting a new code",
-        resendAvailableAt: existing.resendAvailableAt,
-      },
-      { status: 429 },
-    );
-  }
-
   const rateKey = getClientKey(request, fullPhoneNumber);
   const rate = checkRateLimit(rateKey, 5, 60_000);
   if (!rate.allowed) {
@@ -70,12 +53,59 @@ export async function POST(request: Request) {
     );
   }
 
-  const otpCode = generateOtpCode();
   const now = Date.now();
   const otpExpiresAt = now + otpExpiresSeconds * 1000;
   const resendAvailableAt = now + resendCooldownSeconds * 1000;
+  const otpBypassEnabled =
+    process.env.OTP_BYPASS_ENABLED === "true" ||
+    process.env.NEXT_PUBLIC_OTP_BYPASS_ENABLED === "true";
+  const otpCode = otpBypassEnabled ? "123456" : generateOtpCode();
 
   try {
+    const existing = await getOtpSession(fullPhoneNumber);
+    if (existing && Date.now() < existing.resendAvailableAt) {
+      return NextResponse.json(
+        {
+          success: false,
+          canProceedToVerify: true,
+          countryCode: existing.countryCode,
+          nationalNumber: existing.nationalNumber,
+          fullPhoneNumber: existing.fullPhoneNumber,
+          otpSentAt: existing.otpSentAt,
+          otpExpiresAt: existing.otpExpiresAt,
+          error: "Please wait before requesting a new code",
+          resendAvailableAt: existing.resendAvailableAt,
+        },
+        { status: 429 },
+      );
+    }
+
+    if (otpBypassEnabled) {
+      await upsertOtpSession({
+        countryCode,
+        nationalNumber,
+        fullPhoneNumber,
+        otpCode,
+        otpSentAt: now,
+        otpExpiresAt,
+        resendAvailableAt,
+      });
+
+      return NextResponse.json(
+        {
+          success: true,
+          countryCode,
+          nationalNumber,
+          fullPhoneNumber,
+          otpSentAt: now,
+          otpExpiresAt,
+          resendAvailableAt,
+          bypass: true,
+        },
+        { status: 200 },
+      );
+    }
+
     const providerResult = await sendOtpMessage({
       to: fullPhoneNumber,
       otpCode,
@@ -88,7 +118,7 @@ export async function POST(request: Request) {
       status: providerResult.status,
     });
 
-    upsertOtpSession({
+    await upsertOtpSession({
       countryCode,
       nationalNumber,
       fullPhoneNumber,
@@ -111,6 +141,16 @@ export async function POST(request: Request) {
       { status: 200 },
     );
   } catch (error) {
+    if (error instanceof AuthStorageConfigurationError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: error.message,
+        },
+        { status: 503 },
+      );
+    }
+
     if (error instanceof SolapiError) {
       console.error("[auth/send-otp] solapi error", {
         status: error.status,

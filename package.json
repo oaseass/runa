@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@tosspayments/tosspayments-sdk": "^2.6.0",
+    "@upstash/redis": "^1.37.0",
     "astronomy-engine": "^2.1.19",
     "better-sqlite3": "^12.8.0",
     "next": "16.2.0",

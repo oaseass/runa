@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { findAccountDraftByUsername } from "@/lib/server/account-draft-store";
 import { setAuthCookie } from "@/lib/server/auth-session";
+import { AuthStorageConfigurationError } from "@/lib/server/auth-storage";
 
 function getRedirectPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
@@ -23,7 +24,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "username required" }, { status: 400 });
   }
 
-  const account = findAccountDraftByUsername(username);
+  let account;
+  try {
+    account = await findAccountDraftByUsername(username);
+  } catch (error) {
+    if (error instanceof AuthStorageConfigurationError) {
+      return NextResponse.json({ error: error.message }, { status: 503 });
+    }
+
+    return NextResponse.json({ error: "lookup failed" }, { status: 500 });
+  }
 
   if (!account) {
     return NextResponse.json({ error: "user not found" }, { status: 404 });

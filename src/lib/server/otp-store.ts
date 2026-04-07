@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { db } from "@/lib/server/db";
+import { authOtpKey, getExternalAuthStorage, type StoredOtpSession } from "@/lib/server/auth-storage";
 
 export type OtpSession = {
   countryCode: string;
@@ -13,6 +13,11 @@ export type OtpSession = {
   failedAttempts: number;
 };
 
+async function getLocalDb() {
+  const { db } = await import("@/lib/server/db");
+  return db;
+}
+
 function hashOtp(code: string) {
   return crypto.createHash("sha256").update(code).digest("hex");
 }
@@ -21,7 +26,13 @@ export function generateOtpCode() {
   return crypto.randomInt(100000, 1000000).toString();
 }
 
-export function getOtpSession(fullPhoneNumber: string) {
+export async function getOtpSession(fullPhoneNumber: string) {
+  const redis = getExternalAuthStorage();
+  if (redis) {
+    return (await redis.get<StoredOtpSession>(authOtpKey(fullPhoneNumber))) ?? null;
+  }
+
+  const db = await getLocalDb();
   const row = db
     .prepare(
       `
@@ -70,7 +81,7 @@ export function getOtpSession(fullPhoneNumber: string) {
   };
 }
 
-export function upsertOtpSession(payload: {
+export async function upsertOtpSession(payload: {
   countryCode: string;
   nationalNumber: string;
   fullPhoneNumber: string;
@@ -91,6 +102,14 @@ export function upsertOtpSession(payload: {
     verificationStatus: false,
     failedAttempts: 0,
   };
+
+  const redis = getExternalAuthStorage();
+  if (redis) {
+    await redis.set(authOtpKey(payload.fullPhoneNumber), record);
+    return record;
+  }
+
+  const db = await getLocalDb();
 
   db.prepare(
     `
@@ -143,8 +162,8 @@ export function upsertOtpSession(payload: {
   return record;
 }
 
-export function verifyOtpCode(fullPhoneNumber: string, otpCode: string) {
-  const record = getOtpSession(fullPhoneNumber);
+export async function verifyOtpCode(fullPhoneNumber: string, otpCode: string) {
+  const record = await getOtpSession(fullPhoneNumber);
 
   if (!record) {
     return { ok: false, reason: "missing" as const };
@@ -158,11 +177,45 @@ export function verifyOtpCode(fullPhoneNumber: string, otpCode: string) {
     return { ok: false, reason: "too_many_attempts" as const };
   }
 
+  const redis = getExternalAuthStorage();
+
   if (record.otpHash !== hashOtp(otpCode)) {
+    if (redis) {
+      await redis.set(authOtpKey(fullPhoneNumber), {
+        ...record,
+        failedAttempts: record.failedAttempts + 1,
+      });
+    } else {
+      const db = await getLocalDb();
+      db.prepare(
+        `
+        UPDATE otp_sessions
+        SET failed_attempts = failed_attempts + 1,
+            updated_at = @updatedAt
+        WHERE phone_number = @phoneNumber
+        `,
+      ).run({
+        updatedAt: new Date().toISOString(),
+        phoneNumber: fullPhoneNumber,
+      });
+    }
+
+    return { ok: false, reason: "invalid" as const };
+  }
+
+  if (redis) {
+    await redis.set(authOtpKey(fullPhoneNumber), {
+      ...record,
+      verificationStatus: true,
+      failedAttempts: 0,
+    });
+  } else {
+    const db = await getLocalDb();
     db.prepare(
       `
       UPDATE otp_sessions
-      SET failed_attempts = failed_attempts + 1,
+      SET verification_status = 1,
+          failed_attempts = 0,
           updated_at = @updatedAt
       WHERE phone_number = @phoneNumber
       `,
@@ -170,22 +223,7 @@ export function verifyOtpCode(fullPhoneNumber: string, otpCode: string) {
       updatedAt: new Date().toISOString(),
       phoneNumber: fullPhoneNumber,
     });
-
-    return { ok: false, reason: "invalid" as const };
   }
-
-  db.prepare(
-    `
-    UPDATE otp_sessions
-    SET verification_status = 1,
-        failed_attempts = 0,
-        updated_at = @updatedAt
-    WHERE phone_number = @phoneNumber
-    `,
-  ).run({
-    updatedAt: new Date().toISOString(),
-    phoneNumber: fullPhoneNumber,
-  });
 
   return {
     ok: true,

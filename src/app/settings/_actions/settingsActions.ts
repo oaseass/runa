@@ -53,7 +53,7 @@ export async function changeUsernameAction(
   }
 
   // Verify current password
-  const verified = verifyAccountDraftPassword(claims.username, password);
+  const verified = await verifyAccountDraftPassword(claims.username, password);
   if (!verified) return { success: false, error: "wrong-password" };
 
   const result = changeUsername(claims.userId, newUsername);

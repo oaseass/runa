@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyAccountDraftPassword } from "@/lib/server/account-draft-store";
 import { setAuthCookie } from "@/lib/server/auth-session";
+import { AuthStorageConfigurationError } from "@/lib/server/auth-storage";
 
 type LoginByUsernameRequest = {
   username?: string;
@@ -18,7 +19,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: "아이디 또는 비밀번호를 확인해 주세요." }, { status: 400 });
   }
 
-  const account = verifyAccountDraftPassword(username, password);
+  let account;
+  try {
+    account = await verifyAccountDraftPassword(username, password);
+  } catch (error) {
+    if (error instanceof AuthStorageConfigurationError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 503 });
+    }
+
+    return NextResponse.json({ success: false, error: "로그인에 실패했어요." }, { status: 500 });
+  }
 
   if (!account) {
     return NextResponse.json({ success: false, error: "아이디 또는 비밀번호를 확인해 주세요." }, { status: 401 });

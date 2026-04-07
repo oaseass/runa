@@ -3,6 +3,7 @@ import { checkRateLimit } from "@/lib/server/otp-rate-limit";
 import { verifyOtpCode } from "@/lib/server/otp-store";
 import { findAccountDraftByPhoneNumber } from "@/lib/server/account-draft-store";
 import { setAuthCookie } from "@/lib/server/auth-session";
+import { AuthStorageConfigurationError } from "@/lib/server/auth-storage";
 
 type VerifyOtpRequest = {
   fullPhoneNumber?: string;
@@ -43,7 +44,30 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = verifyOtpCode(fullPhoneNumber, otpCode);
+  let result;
+  try {
+    result = await verifyOtpCode(fullPhoneNumber, otpCode);
+  } catch (error) {
+    if (error instanceof AuthStorageConfigurationError) {
+      return NextResponse.json(
+        {
+          success: false,
+          verificationStatus: false,
+          error: error.message,
+        },
+        { status: 503 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        verificationStatus: false,
+        error: "인증 확인 중 오류가 발생했어요.",
+      },
+      { status: 500 },
+    );
+  }
 
   if (!result.ok) {
     if (result.reason === "expired") {
@@ -78,7 +102,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const existingAccount = hasAccount(fullPhoneNumber);
+  const existingAccount = await hasAccount(fullPhoneNumber);
 
   const response = NextResponse.json(
     {
@@ -103,8 +127,8 @@ export async function POST(request: Request) {
   return response;
 }
 
-function hasAccount(fullPhoneNumber: string) {
-  const account = findAccountDraftByPhoneNumber(fullPhoneNumber);
+async function hasAccount(fullPhoneNumber: string) {
+  const account = await findAccountDraftByPhoneNumber(fullPhoneNumber);
 
   if (!account) {
     return null;

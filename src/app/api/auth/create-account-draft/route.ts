@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { AccountStoreError, createAccountDraft } from "@/lib/server/account-draft-store";
+import { AuthStorageConfigurationError } from "@/lib/server/auth-storage";
 
 type CreateDraftRequest = {
   username?: string;
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const draft = createAccountDraft({
+    const draft = await createAccountDraft({
       username,
       phoneNumber: fullPhoneNumber,
       password,
@@ -76,6 +77,10 @@ export async function POST(request: Request) {
       if (error.code === "PHONE_EXISTS") {
         return NextResponse.json({ success: false, error: "이미 등록된 전화번호예요." }, { status: 409 });
       }
+    }
+
+    if (error instanceof AuthStorageConfigurationError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 503 });
     }
 
     return NextResponse.json({ success: false, error: "계정 생성에 실패했어요." }, { status: 500 });

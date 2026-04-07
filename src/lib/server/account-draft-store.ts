@@ -1,5 +1,11 @@
 import crypto from "node:crypto";
-import { db } from "@/lib/server/db";
+import {
+  authUserByPhoneKey,
+  authUserByUsernameKey,
+  authUserKey,
+  getExternalAuthStorage,
+  type StoredAuthAccount,
+} from "@/lib/server/auth-storage";
 
 type AccountDraft = {
   id: string;
@@ -30,6 +36,13 @@ type OnboardingProfileInput = {
   } | null;
 };
 
+type PublicAccount = {
+  id: string;
+  username: string;
+  phoneNumber: string;
+  createdAt: string;
+};
+
 export class AccountStoreError extends Error {
   code: "USERNAME_EXISTS" | "PHONE_EXISTS";
 
@@ -48,7 +61,7 @@ function mapUserRow(row: {
   username: string;
   phone_number: string;
   created_at: string;
-}) {
+}): PublicAccount {
   return {
     id: row.id,
     username: row.username,
@@ -57,12 +70,97 @@ function mapUserRow(row: {
   };
 }
 
-export function createAccountDraft(input: {
+function toPublicAccount(account: {
+  id: string;
+  username: string;
+  phoneNumber: string;
+  createdAt: string;
+}): PublicAccount {
+  return {
+    id: account.id,
+    username: account.username,
+    phoneNumber: account.phoneNumber,
+    createdAt: account.createdAt,
+  };
+}
+
+async function getLocalDb() {
+  const { db } = await import("@/lib/server/db");
+  return db;
+}
+
+async function getRedisAccountById(userId: string) {
+  const redis = getExternalAuthStorage();
+  if (!redis) return null;
+  return (await redis.get<StoredAuthAccount>(authUserKey(userId))) ?? null;
+}
+
+async function getRedisAccountByUsername(username: string) {
+  const redis = getExternalAuthStorage();
+  if (!redis) return null;
+
+  const userId = await redis.get<string>(authUserByUsernameKey(username));
+  if (!userId) return null;
+
+  return getRedisAccountById(userId);
+}
+
+async function getRedisAccountByPhone(phoneNumber: string) {
+  const redis = getExternalAuthStorage();
+  if (!redis) return null;
+
+  const userId = await redis.get<string>(authUserByPhoneKey(phoneNumber));
+  if (!userId) return null;
+
+  return getRedisAccountById(userId);
+}
+
+export async function createAccountDraft(input: {
   username: string;
   phoneNumber: string;
   password: string;
   onboardingProfile?: OnboardingProfileInput;
 }) {
+  const draftId = crypto.randomUUID();
+  const salt = crypto.randomBytes(16).toString("hex");
+  const passwordHash = hashPassword(input.password, salt);
+  const now = new Date().toISOString();
+  const redis = getExternalAuthStorage();
+
+  if (redis) {
+    const usernameCreated = await redis.setnx(authUserByUsernameKey(input.username), draftId);
+    if (usernameCreated !== 1) {
+      throw new AccountStoreError("USERNAME_EXISTS");
+    }
+
+    const phoneCreated = await redis.setnx(authUserByPhoneKey(input.phoneNumber), draftId);
+    if (phoneCreated !== 1) {
+      await redis.del(authUserByUsernameKey(input.username));
+      throw new AccountStoreError("PHONE_EXISTS");
+    }
+
+    const draft: StoredAuthAccount = {
+      id: draftId,
+      username: input.username,
+      phoneNumber: input.phoneNumber,
+      passwordHash,
+      passwordSalt: salt,
+      createdAt: now,
+      onboardingProfile: input.onboardingProfile ?? null,
+    };
+
+    try {
+      await redis.set(authUserKey(draftId), draft);
+    } catch (error) {
+      await redis.del(authUserByUsernameKey(input.username));
+      await redis.del(authUserByPhoneKey(input.phoneNumber));
+      throw error;
+    }
+
+    return toPublicAccount(draft);
+  }
+
+  const db = await getLocalDb();
   const existsByUsername = db
     .prepare("SELECT id FROM users WHERE lower(username) = lower(?)")
     .get(input.username) as { id: string } | undefined;
@@ -78,11 +176,6 @@ export function createAccountDraft(input: {
   if (existsByPhone) {
     throw new AccountStoreError("PHONE_EXISTS");
   }
-
-  const draftId = crypto.randomUUID();
-  const salt = crypto.randomBytes(16).toString("hex");
-  const passwordHash = hashPassword(input.password, salt);
-  const now = new Date().toISOString();
 
   const draft: AccountDraft = {
     id: draftId,
@@ -164,15 +257,16 @@ export function createAccountDraft(input: {
 
   tx();
 
-  return {
-    id: draft.id,
-    username: draft.username,
-    phoneNumber: draft.phoneNumber,
-    createdAt: draft.createdAt,
-  };
+  return toPublicAccount(draft);
 }
 
-export function getAccountDraft(id: string) {
+export async function getAccountDraft(id: string) {
+  const redisAccount = await getRedisAccountById(id);
+  if (redisAccount) {
+    return toPublicAccount(redisAccount);
+  }
+
+  const db = await getLocalDb();
   const row = db
     .prepare("SELECT id, username, phone_number, created_at FROM users WHERE id = ?")
     .get(id) as
@@ -191,7 +285,13 @@ export function getAccountDraft(id: string) {
   return mapUserRow(row);
 }
 
-export function hasAccountDraftByPhoneNumber(phoneNumber: string) {
+export async function hasAccountDraftByPhoneNumber(phoneNumber: string) {
+  const redisAccount = await getRedisAccountByPhone(phoneNumber);
+  if (redisAccount) {
+    return true;
+  }
+
+  const db = await getLocalDb();
   const row = db
     .prepare("SELECT id FROM users WHERE phone_number = ?")
     .get(phoneNumber) as { id: string } | undefined;
@@ -199,7 +299,13 @@ export function hasAccountDraftByPhoneNumber(phoneNumber: string) {
   return Boolean(row);
 }
 
-export function findAccountDraftByPhoneNumber(phoneNumber: string) {
+export async function findAccountDraftByPhoneNumber(phoneNumber: string) {
+  const redisAccount = await getRedisAccountByPhone(phoneNumber);
+  if (redisAccount) {
+    return toPublicAccount(redisAccount);
+  }
+
+  const db = await getLocalDb();
   const row = db
     .prepare("SELECT id, username, phone_number, created_at FROM users WHERE phone_number = ?")
     .get(phoneNumber) as
@@ -218,7 +324,20 @@ export function findAccountDraftByPhoneNumber(phoneNumber: string) {
   return mapUserRow(row);
 }
 
-export function findAccountDraftByUsername(username: string) {
+export async function findAccountDraftByUsername(username: string) {
+  const redisAccount = await getRedisAccountByUsername(username);
+  if (redisAccount) {
+    return {
+      id: redisAccount.id,
+      username: redisAccount.username,
+      phoneNumber: redisAccount.phoneNumber,
+      passwordHash: redisAccount.passwordHash,
+      passwordSalt: redisAccount.passwordSalt,
+      createdAt: redisAccount.createdAt,
+    };
+  }
+
+  const db = await getLocalDb();
   const row = db
     .prepare(
       "SELECT id, username, phone_number, password_hash, password_salt, created_at FROM users WHERE lower(username) = lower(?)",
@@ -248,8 +367,8 @@ export function findAccountDraftByUsername(username: string) {
   };
 }
 
-export function verifyAccountDraftPassword(username: string, password: string) {
-  const account = findAccountDraftByUsername(username);
+export async function verifyAccountDraftPassword(username: string, password: string) {
+  const account = await findAccountDraftByUsername(username);
 
   if (!account) {
     return null;
