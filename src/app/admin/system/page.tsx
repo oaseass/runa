@@ -1,6 +1,7 @@
 import { requireAdminAuth } from "@/lib/server/admin-session";
 import { getAdminStats } from "@/lib/server/admin-stats";
 import { db } from "@/lib/server/db";
+import AdminAuthStoragePanel from "@/components/admin/AdminAuthStoragePanel";
 
 function fmt(n: number) { return n.toLocaleString("ko-KR"); }
 
@@ -137,6 +138,8 @@ export default async function AdminSystemPage() {
             </table>
           </div>
         </div>
+
+        <AdminAuthStoragePanel />
       </div>
     </div>
   );
