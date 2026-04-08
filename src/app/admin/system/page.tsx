@@ -1,21 +1,48 @@
 import { requireAdminAuth } from "@/lib/server/admin-session";
-import { getAdminStats } from "@/lib/server/admin-stats";
-import { db } from "@/lib/server/db";
 import AdminAuthStoragePanel from "@/components/admin/AdminAuthStoragePanel";
+import type { AdminStats } from "@/lib/server/admin-stats";
 
 function fmt(n: number) { return n.toLocaleString("ko-KR"); }
 
+const EMPTY_STATS: AdminStats = {
+  users: { total: 0, today: 0, yesterday: 0, week: 0, prevWeek: 0, month: 0, prevMonth: 0, dailySignups: [] },
+  premium: { activeMembers: 0, thisMonth: 0, allTimePurchases: 0 },
+  orders: {
+    total: 0,
+    paid: 0,
+    pending: 0,
+    failed: 0,
+    totalRevenue: 0,
+    monthlyRevenue: 0,
+    weekRevenue: 0,
+    lastWeekRevenue: 0,
+    todayRevenue: 0,
+    yesterdayRevenue: 0,
+    byProduct: [],
+    dailyRevenue: [],
+  },
+  void: { total: 0, complete: 0, failed: 0, generating: 0, pending: 0, completionRate: 0, byCategory: [] },
+  connections: { total: 0, usersWithConnections: 0 },
+};
+
 export default async function AdminSystemPage() {
   await requireAdminAuth();
-  const stats = getAdminStats();
+  let stats = EMPTY_STATS;
+  let localDbAvailable = true;
 
   let dbSize = "—";
   try {
-    const row = db
-      .prepare(
-        "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()",
-      )
-      .get() as { size: number } | undefined;
+    const [{ getAdminStats }, { db }] = await Promise.all([
+      import("@/lib/server/admin-stats"),
+      import("@/lib/server/db"),
+    ]);
+
+    stats = getAdminStats();
+
+    const row = db.prepare("SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()").get() as
+      | { size: number }
+      | undefined;
+
     if (row) {
       const bytes = row.size;
       dbSize =
@@ -24,7 +51,7 @@ export default async function AdminSystemPage() {
           : `${(bytes / 1024).toFixed(0)} KB`;
     }
   } catch {
-    /* ignore */
+    localDbAvailable = false;
   }
 
   const uptime = process.uptime();
@@ -103,6 +130,14 @@ export default async function AdminSystemPage() {
                   <td style={{ color: "#9ca3af" }}>런타임</td>
                   <td style={{ fontFamily: "monospace" }}>Node.js {process.version}</td>
                 </tr>
+                <tr>
+                  <td style={{ color: "#9ca3af" }}>로컬 SQLite</td>
+                  <td>
+                    <span className={`ac-badge ${localDbAvailable ? "ac-badge-green" : "ac-badge-yellow"}`}>
+                      {localDbAvailable ? "사용 가능" : "현재 런타임에서 사용 불가"}
+                    </span>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -138,6 +173,16 @@ export default async function AdminSystemPage() {
             </table>
           </div>
         </div>
+
+        {!localDbAvailable ? (
+          <div className="ac-alert" style={{ marginBottom: "1.25rem", borderColor: "#fcd34d" }}>
+            <span style={{ color: "#a16207", fontWeight: 700 }}>!</span>
+            <span style={{ color: "#78350f", fontSize: "0.8rem" }}>
+              현재 프로덕션 런타임에서는 로컬 SQLite 원본을 열 수 없어서, 일부 시스템 통계와 인증 저장소 비교는 제한됩니다.
+              누락 계정 백필은 로컬 워크스페이스에서 실행한 스크립트나 로컬 관리자 점검 화면으로 처리해야 합니다.
+            </span>
+          </div>
+        ) : null}
 
         <AdminAuthStoragePanel />
       </div>

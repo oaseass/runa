@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { ADMIN_COOKIE_NAME, verifyAdminToken } from "@/lib/server/admin-session";
 import { AuthStorageConfigurationError } from "@/lib/server/auth-storage";
-import { backfillAuthStorageFromLocal } from "@/lib/server/auth-storage-sync";
+import { backfillAuthStorageFromLocal, LocalAuthSourceUnavailableError } from "@/lib/server/auth-storage-sync";
 
 export async function POST() {
   const token = (await cookies()).get(ADMIN_COOKIE_NAME)?.value;
@@ -16,6 +16,10 @@ export async function POST() {
     return NextResponse.json(report, { status: 200 });
   } catch (error) {
     if (error instanceof AuthStorageConfigurationError) {
+      return NextResponse.json({ error: error.message }, { status: 503 });
+    }
+
+    if (error instanceof LocalAuthSourceUnavailableError) {
       return NextResponse.json({ error: error.message }, { status: 503 });
     }
 

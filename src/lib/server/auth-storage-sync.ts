@@ -1,5 +1,4 @@
 import "server-only";
-import { db } from "@/lib/server/db";
 import {
   AuthStorageConfigurationError,
   authUserByPhoneKey,
@@ -65,6 +64,13 @@ type SyncInspection = {
   preview?: AuthSyncPreview;
 };
 
+export class LocalAuthSourceUnavailableError extends Error {
+  constructor(message = "현재 런타임에서는 로컬 SQLite 원본을 열 수 없어요. 로컬에서 백필 스크립트를 실행해 주세요.") {
+    super(message);
+    this.name = "LocalAuthSourceUnavailableError";
+  }
+}
+
 function getRequiredAuthStorage() {
   const redis = getExternalAuthStorage();
 
@@ -75,8 +81,11 @@ function getRequiredAuthStorage() {
   return redis;
 }
 
-function readLocalAuthRows(): LocalAuthRow[] {
-  return db
+async function readLocalAuthRows(): Promise<LocalAuthRow[]> {
+  try {
+    const { db } = await import("@/lib/server/db");
+
+    return db
     .prepare(
       `
       SELECT
@@ -103,6 +112,10 @@ function readLocalAuthRows(): LocalAuthRow[] {
       `,
     )
     .all() as LocalAuthRow[];
+  } catch (error) {
+    console.warn("[auth-storage-sync] local sqlite source unavailable", error);
+    throw new LocalAuthSourceUnavailableError();
+  }
 }
 
 function mapStoredAuthAccount(row: LocalAuthRow): StoredAuthAccount {
@@ -217,7 +230,7 @@ async function inspectAccount(account: StoredAuthAccount): Promise<SyncInspectio
 }
 
 export async function getAuthStorageSyncStatus(): Promise<AuthStorageSyncStatus> {
-  const localAccounts = readLocalAuthRows().map(mapStoredAuthAccount);
+  const localAccounts = (await readLocalAuthRows()).map(mapStoredAuthAccount);
   const externalUserKeys = await scanKeys("luna:auth:v1:user:id:*");
 
   let syncedUsers = 0;
@@ -261,7 +274,7 @@ export async function getAuthStorageSyncStatus(): Promise<AuthStorageSyncStatus>
 
 export async function backfillAuthStorageFromLocal(): Promise<AuthStorageBackfillReport> {
   const redis = getRequiredAuthStorage();
-  const localAccounts = readLocalAuthRows().map(mapStoredAuthAccount);
+  const localAccounts = (await readLocalAuthRows()).map(mapStoredAuthAccount);
   const externalUserKeys = await scanKeys("luna:auth:v1:user:id:*");
 
   let syncedUsers = 0;
