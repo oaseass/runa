@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -116,6 +117,15 @@ export default function LoginByUsernamePage() {
         <button type="button" className="cta cta-solid" onClick={handleSubmit} disabled={!canSubmit || isSubmitting}>
           {isSubmitting ? "확인 중..." : "로그인 완료"}
         </button>
+
+        <div className="recovery-link-row recovery-link-row-centered">
+          <Link href="/account-recovery/username" className="tiny-link">
+            아이디 찾기
+          </Link>
+          <Link href="/account-recovery/password" className="tiny-link">
+            비밀번호 재설정
+          </Link>
+        </div>
 
         {errorMessage ? <p className="dark-copy">{errorMessage}</p> : null}
       </section>

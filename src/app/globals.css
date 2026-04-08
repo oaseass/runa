@@ -2196,6 +2196,50 @@ a {
   color: var(--dark-dim);
 }
 
+.recovery-stack {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.recovery-otp-block {
+  display: grid;
+  gap: 0.92rem;
+}
+
+.recovery-link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.recovery-link-row-centered {
+  justify-content: center;
+}
+
+.recovery-result-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid var(--dark-line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.recovery-result-label {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dark-dim);
+}
+
+.recovery-result-value {
+  margin: 0;
+  color: var(--dark-text);
+  font-size: 1.2rem;
+  letter-spacing: 0.03em;
+}
+
 .tiny-link {
   font-size: 0.75rem;
   color: var(--dark-dim);

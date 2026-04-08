@@ -369,6 +369,79 @@ export async function findAccountDraftByUsername(username: string) {
   };
 }
 
+export async function findAccountDraftByRecoveryInfo(username: string, phoneNumber: string) {
+  const account = await findAccountDraftByUsername(username);
+
+  if (!account || account.phoneNumber !== phoneNumber.trim()) {
+    return null;
+  }
+
+  return {
+    id: account.id,
+    username: account.username,
+    phoneNumber: account.phoneNumber,
+    createdAt: account.createdAt,
+  };
+}
+
+export async function updateAccountDraftPassword(userId: string, password: string) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const passwordHash = hashPassword(password, salt);
+  const now = new Date().toISOString();
+  const redis = getExternalAuthStorage();
+
+  if (redis) {
+    const account = await getRedisAccountById(userId);
+
+    if (!account) {
+      return null;
+    }
+
+    const updatedAccount: StoredAuthAccount = {
+      ...account,
+      passwordHash,
+      passwordSalt: salt,
+    };
+
+    await redis.set(authUserKey(userId), updatedAccount);
+
+    return toPublicAccount(updatedAccount);
+  }
+
+  const db = await getLocalDb();
+  const existing = db
+    .prepare("SELECT id, username, phone_number, created_at FROM users WHERE id = ?")
+    .get(userId) as
+    | {
+        id: string;
+        username: string;
+        phone_number: string;
+        created_at: string;
+      }
+    | undefined;
+
+  if (!existing) {
+    return null;
+  }
+
+  db.prepare(
+    `
+    UPDATE users
+    SET password_hash = @passwordHash,
+        password_salt = @passwordSalt,
+        updated_at = @updatedAt
+    WHERE id = @userId
+    `,
+  ).run({
+    passwordHash,
+    passwordSalt: salt,
+    updatedAt: now,
+    userId,
+  });
+
+  return mapUserRow(existing);
+}
+
 export async function verifyAccountDraftPassword(username: string, password: string) {
   const account = await findAccountDraftByUsername(username);
 

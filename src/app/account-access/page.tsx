@@ -185,6 +185,42 @@ export default function AccountAccessPage() {
           아이디로 확인하기
         </Link>
 
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.8rem",
+            marginTop: "0.1rem",
+          }}
+        >
+          <Link
+            href="/account-recovery/username"
+            style={{
+              fontSize: "0.7rem",
+              color: "rgba(255,255,255,0.34)",
+              textDecoration: "none",
+              letterSpacing: "0.05em",
+            }}
+          >
+            아이디 찾기
+          </Link>
+          <span aria-hidden="true" style={{ color: "rgba(255,255,255,0.18)", fontSize: "0.68rem" }}>
+            ·
+          </span>
+          <Link
+            href="/account-recovery/password"
+            style={{
+              fontSize: "0.7rem",
+              color: "rgba(255,255,255,0.34)",
+              textDecoration: "none",
+              letterSpacing: "0.05em",
+            }}
+          >
+            비밀번호 재설정
+          </Link>
+        </div>
+
         <Link
           href="/start"
           style={{

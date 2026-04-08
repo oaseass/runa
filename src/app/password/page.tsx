@@ -138,7 +138,7 @@ export default function PasswordPage() {
             <Link href="/login/username" className="cta cta-solid">
               로그인하기
             </Link>
-            <Link href="/account-access" className="cta account-access-ghost">
+            <Link href="/account-recovery/username" className="cta account-access-ghost">
               아이디 찾기
             </Link>
           </div>

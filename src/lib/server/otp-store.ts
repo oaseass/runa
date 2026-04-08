@@ -235,3 +235,15 @@ export async function verifyOtpCode(fullPhoneNumber: string, otpCode: string) {
     },
   };
 }
+
+export async function deleteOtpSession(fullPhoneNumber: string) {
+  const redis = getExternalAuthStorage();
+
+  if (redis) {
+    await redis.del(authOtpKey(fullPhoneNumber));
+    return;
+  }
+
+  const db = await getLocalDb();
+  db.prepare("DELETE FROM otp_sessions WHERE phone_number = ?").run(fullPhoneNumber);
+}
