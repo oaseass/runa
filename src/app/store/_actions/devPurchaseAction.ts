@@ -34,7 +34,7 @@ export async function devPurchaseAction(formData: FormData) {
 
   if (productId === "area") {
     try {
-      const report = generateAreaReport(claims.userId);
+      const report = await generateAreaReport(claims.userId);
       if (report) setOrderReportJson(order.id, JSON.stringify(report));
     } catch { /* best-effort */ }
     redirect(`/store/report/${order.id}`);
@@ -42,7 +42,7 @@ export async function devPurchaseAction(formData: FormData) {
 
   if (productId === "yearly") {
     try {
-      const report = generateYearlyReport(claims.userId);
+      const report = await generateYearlyReport(claims.userId);
       if (report) setOrderReportJson(order.id, JSON.stringify(report));
     } catch { /* best-effort */ }
     redirect(`/store/report/${order.id}`);

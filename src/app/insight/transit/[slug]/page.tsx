@@ -4,7 +4,7 @@ import BottomNav from "@/components/BottomNav";
 import BackButton from "@/components/BackButton";
 import { cookies } from "next/headers";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
-import { getTransitChartData } from "@/lib/server/chart-store";
+import { getTransitChartDataForUser } from "@/lib/server/chart-runtime";
 import type { PlanetName, AspectName, TransitChartData } from "@/lib/astrology/types";
 import TransitChartViz from "@/app/insight/today/_components/TransitChartViz";
 
@@ -92,7 +92,7 @@ export default async function TransitDetailPage({
   const session = verifySessionToken(token);
   if (!session) redirect("/");
 
-  const fullData = getTransitChartData(session.userId, new Date());
+  const fullData = await getTransitChartDataForUser(session.userId, new Date());
   if (!fullData) redirect("/home");
 
   // Find the matching aspect record for phrase + orb

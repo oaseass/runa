@@ -1,5 +1,12 @@
 import crypto from "node:crypto";
 import {
+  findStoredAuthAccountById,
+  findStoredAuthAccountByPhone,
+  findStoredAuthAccountByUsername,
+  toPublicAuthAccount,
+  updateStoredAuthPassword,
+} from "@/lib/server/auth-account-store";
+import {
   authUserByPhoneKey,
   authUserByUsernameKey,
   authUserKey,
@@ -56,20 +63,6 @@ function hashPassword(password: string, salt: string): string {
   return crypto.scryptSync(password, salt, 64).toString("hex");
 }
 
-function mapUserRow(row: {
-  id: string;
-  username: string;
-  phone_number: string;
-  created_at: string;
-}): PublicAccount {
-  return {
-    id: row.id,
-    username: row.username,
-    phoneNumber: row.phone_number,
-    createdAt: row.created_at,
-  };
-}
-
 function toPublicAccount(account: {
   id: string;
   username: string;
@@ -87,32 +80,6 @@ function toPublicAccount(account: {
 async function getLocalDb() {
   const { db } = await import("@/lib/server/db");
   return db;
-}
-
-async function getRedisAccountById(userId: string) {
-  const redis = getExternalAuthStorage();
-  if (!redis) return null;
-  return (await redis.get<StoredAuthAccount>(authUserKey(userId))) ?? null;
-}
-
-async function getRedisAccountByUsername(username: string) {
-  const redis = getExternalAuthStorage();
-  if (!redis) return null;
-
-  const userId = await redis.get<string>(authUserByUsernameKey(username));
-  if (!userId) return null;
-
-  return getRedisAccountById(userId);
-}
-
-async function getRedisAccountByPhone(phoneNumber: string) {
-  const redis = getExternalAuthStorage();
-  if (!redis) return null;
-
-  const userId = await redis.get<string>(authUserByPhoneKey(phoneNumber));
-  if (!userId) return null;
-
-  return getRedisAccountById(userId);
 }
 
 export async function createAccountDraft(input: {
@@ -261,112 +228,31 @@ export async function createAccountDraft(input: {
 }
 
 export async function getAccountDraft(id: string) {
-  const redisAccount = await getRedisAccountById(id);
-  if (getExternalAuthStorage()) {
-    return redisAccount ? toPublicAccount(redisAccount) : null;
-  }
-
-  const db = await getLocalDb();
-  const row = db
-    .prepare("SELECT id, username, phone_number, created_at FROM users WHERE id = ?")
-    .get(id) as
-    | {
-        id: string;
-        username: string;
-        phone_number: string;
-        created_at: string;
-      }
-    | undefined;
-
-  if (!row) {
-    return null;
-  }
-
-  return mapUserRow(row);
+  const account = await findStoredAuthAccountById(id);
+  return account ? toPublicAccount(account) : null;
 }
 
 export async function hasAccountDraftByPhoneNumber(phoneNumber: string) {
-  const redisAccount = await getRedisAccountByPhone(phoneNumber);
-  if (getExternalAuthStorage()) {
-    return Boolean(redisAccount);
-  }
-
-  const db = await getLocalDb();
-  const row = db
-    .prepare("SELECT id FROM users WHERE phone_number = ?")
-    .get(phoneNumber) as { id: string } | undefined;
-
-  return Boolean(row);
+  return Boolean(await findStoredAuthAccountByPhone(phoneNumber));
 }
 
 export async function findAccountDraftByPhoneNumber(phoneNumber: string) {
-  const redisAccount = await getRedisAccountByPhone(phoneNumber);
-  if (getExternalAuthStorage()) {
-    return redisAccount ? toPublicAccount(redisAccount) : null;
-  }
-
-  const db = await getLocalDb();
-  const row = db
-    .prepare("SELECT id, username, phone_number, created_at FROM users WHERE phone_number = ?")
-    .get(phoneNumber) as
-    | {
-        id: string;
-        username: string;
-        phone_number: string;
-        created_at: string;
-      }
-    | undefined;
-
-  if (!row) {
-    return null;
-  }
-
-  return mapUserRow(row);
+  const account = await findStoredAuthAccountByPhone(phoneNumber);
+  return account ? toPublicAccount(account) : null;
 }
 
 export async function findAccountDraftByUsername(username: string) {
-  const redisAccount = await getRedisAccountByUsername(username);
-  if (getExternalAuthStorage()) {
-    return redisAccount
-      ? {
-        id: redisAccount.id,
-        username: redisAccount.username,
-        phoneNumber: redisAccount.phoneNumber,
-        passwordHash: redisAccount.passwordHash,
-        passwordSalt: redisAccount.passwordSalt,
-        createdAt: redisAccount.createdAt,
+  const account = await findStoredAuthAccountByUsername(username);
+  return account
+    ? {
+        id: account.id,
+        username: account.username,
+        phoneNumber: account.phoneNumber,
+        passwordHash: account.passwordHash,
+        passwordSalt: account.passwordSalt,
+        createdAt: account.createdAt,
       }
-      : null;
-  }
-
-  const db = await getLocalDb();
-  const row = db
-    .prepare(
-      "SELECT id, username, phone_number, password_hash, password_salt, created_at FROM users WHERE lower(username) = lower(?)",
-    )
-    .get(username) as
-    | {
-        id: string;
-        username: string;
-        phone_number: string;
-        password_hash: string;
-        password_salt: string;
-        created_at: string;
-      }
-    | undefined;
-
-  if (!row) {
-    return null;
-  }
-
-  return {
-    id: row.id,
-    username: row.username,
-    phoneNumber: row.phone_number,
-    passwordHash: row.password_hash,
-    passwordSalt: row.password_salt,
-    createdAt: row.created_at,
-  };
+    : null;
 }
 
 export async function findAccountDraftByRecoveryInfo(username: string, phoneNumber: string) {
@@ -387,59 +273,8 @@ export async function findAccountDraftByRecoveryInfo(username: string, phoneNumb
 export async function updateAccountDraftPassword(userId: string, password: string) {
   const salt = crypto.randomBytes(16).toString("hex");
   const passwordHash = hashPassword(password, salt);
-  const now = new Date().toISOString();
-  const redis = getExternalAuthStorage();
-
-  if (redis) {
-    const account = await getRedisAccountById(userId);
-
-    if (!account) {
-      return null;
-    }
-
-    const updatedAccount: StoredAuthAccount = {
-      ...account,
-      passwordHash,
-      passwordSalt: salt,
-    };
-
-    await redis.set(authUserKey(userId), updatedAccount);
-
-    return toPublicAccount(updatedAccount);
-  }
-
-  const db = await getLocalDb();
-  const existing = db
-    .prepare("SELECT id, username, phone_number, created_at FROM users WHERE id = ?")
-    .get(userId) as
-    | {
-        id: string;
-        username: string;
-        phone_number: string;
-        created_at: string;
-      }
-    | undefined;
-
-  if (!existing) {
-    return null;
-  }
-
-  db.prepare(
-    `
-    UPDATE users
-    SET password_hash = @passwordHash,
-        password_salt = @passwordSalt,
-        updated_at = @updatedAt
-    WHERE id = @userId
-    `,
-  ).run({
-    passwordHash,
-    passwordSalt: salt,
-    updatedAt: now,
-    userId,
-  });
-
-  return mapUserRow(existing);
+  const updatedAccount = await updateStoredAuthPassword(userId, passwordHash, salt);
+  return updatedAccount ? toPublicAccount(updatedAccount) : null;
 }
 
 export async function verifyAccountDraftPassword(username: string, password: string) {

@@ -29,7 +29,7 @@ export async function refreshAnalysisAction(requestId: string): Promise<void> {
   if (!request) return;
 
   try {
-    const output = generateVoidAnalysis(claims.userId, request.category, request.questionText);
+    const output = await generateVoidAnalysis(claims.userId, request.category, request.questionText);
     if (output) {
       updateVoidAnalysisRequest(requestId, {
         status: "complete",

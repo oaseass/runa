@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { findStoredAuthAccountById, renameStoredAuthUsername } from "./auth-account-store";
 
 export type UserPreferences = {
   notifyDailyReading: boolean;
@@ -54,42 +55,24 @@ export function upsertUserPreferences(
 }
 
 /** Returns the user's join date from the users table, or null. */
-export function getUserCreatedAt(userId: string): string | null {
-  const row = db
-    .prepare("SELECT created_at FROM users WHERE id = @userId")
-    .get({ userId }) as { created_at: string } | undefined;
-  return row?.created_at ?? null;
+export async function getUserCreatedAt(userId: string): Promise<string | null> {
+  const account = await findStoredAuthAccountById(userId);
+  return account?.createdAt ?? null;
 }
 
 /** Returns the user's phone number from the users table, or null. */
-export function getUserPhoneNumber(userId: string): string | null {
-  const row = db
-    .prepare("SELECT phone_number FROM users WHERE id = @userId")
-    .get({ userId }) as { phone_number: string } | undefined;
-  return row?.phone_number ?? null;
+export async function getUserPhoneNumber(userId: string): Promise<string | null> {
+  const account = await findStoredAuthAccountById(userId);
+  return account?.phoneNumber ?? null;
 }
 
 /**
  * Update username. Returns "ok" or an error code.
  * Does NOT re-issue the session token — that's the caller's responsibility.
  */
-export function changeUsername(
+export async function changeUsername(
   userId: string,
   newUsername: string,
-): "ok" | "taken" | "invalid" {
-  const trimmed = newUsername.trim();
-  if (!trimmed || trimmed.length < 2 || trimmed.length > 24) return "invalid";
-  if (!/^[a-zA-Z0-9_가-힣]+$/.test(trimmed)) return "invalid";
-
-  // Check uniqueness (case-insensitive, excluding this user)
-  const existing = db
-    .prepare("SELECT id FROM users WHERE lower(username) = lower(@username) AND id != @userId")
-    .get({ username: trimmed, userId }) as { id: string } | undefined;
-
-  if (existing) return "taken";
-
-  db.prepare("UPDATE users SET username = @username, updated_at = @now WHERE id = @userId")
-    .run({ username: trimmed, now: new Date().toISOString(), userId });
-
-  return "ok";
+): Promise<"ok" | "taken" | "invalid" | "not-found"> {
+  return renameStoredAuthUsername(userId, newUsername);
 }

@@ -9,7 +9,7 @@
 // Same chart + different question -> different planet emphasis and synthesis.
 // Same question + different chart -> different readings.
 
-import { getOrComputeNatalChart } from "./chart-store";
+import { getNatalChartForUser } from "./chart-runtime";
 import {
   interpretNatalChart,
   interpretTransits,
@@ -771,12 +771,12 @@ function buildSection3(
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export function generateVoidAnalysis(
+export async function generateVoidAnalysis(
   userId: string,
   category: CategoryKey,
   questionText: string,
-): VoidAnalysisOutput | null {
-  const chart = getOrComputeNatalChart(userId);
+): Promise<VoidAnalysisOutput | null> {
+  const chart = await getNatalChartForUser(userId);
   if (!chart) return null;
 
   const natal = interpretNatalChart(chart);

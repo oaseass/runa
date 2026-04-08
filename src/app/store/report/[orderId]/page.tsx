@@ -201,10 +201,10 @@ export default async function StoreReportPage({
     try {
       let reportJson: string | null = null;
       if (productId === "area") {
-        const r = generateAreaReport(claims.userId);
+        const r = await generateAreaReport(claims.userId);
         if (r) reportJson = JSON.stringify(r);
       } else if (productId === "yearly") {
-        const r = generateYearlyReport(claims.userId);
+        const r = await generateYearlyReport(claims.userId);
         if (r) reportJson = JSON.stringify(r);
       }
       if (reportJson) {

@@ -10,22 +10,26 @@ export class AuthStorageConfigurationError extends Error {
   }
 }
 
+export type StoredBirthTimeProfile = {
+  birthDate: string | null;
+  hour: number | null;
+  minute: number | null;
+  formatted: string | null;
+};
+
+export type StoredBirthPlaceProfile = {
+  placeId: string | null;
+  fullText: string | null;
+  mainText: string | null;
+  secondaryText: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  timezone: string | null;
+};
+
 export type StoredOnboardingProfile = {
-  birthTime?: {
-    birthDate: string | null;
-    hour: number;
-    minute: number;
-    formatted: string;
-  } | null;
-  birthPlace?: {
-    placeId: string;
-    fullText: string;
-    mainText: string;
-    secondaryText: string;
-    latitude: number | null;
-    longitude: number | null;
-    timezone: string | null;
-  } | null;
+  birthTime?: StoredBirthTimeProfile | null;
+  birthPlace?: StoredBirthPlaceProfile | null;
 };
 
 export type StoredAuthAccount = {

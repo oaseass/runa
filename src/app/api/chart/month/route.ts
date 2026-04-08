@@ -6,7 +6,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
-import { scoreMonthDays } from "@/lib/server/chart-store";
+import { scoreMonthDaysForUser } from "@/lib/server/chart-runtime";
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Invalid year/month" }, { status: 400 });
   }
 
-  const result = scoreMonthDays(session.userId, year, month);
+  const result = await scoreMonthDaysForUser(session.userId, year, month);
   if (!result) {
     return NextResponse.json(
       { success: false, error: "Birth data incomplete. Complete onboarding to generate calendar scores." },

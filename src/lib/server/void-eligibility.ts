@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { verifySessionToken } from "./auth-session";
-import { getBirthProfileStatus, getOrComputeNatalChart } from "./chart-store";
+import { getBirthProfileStatusForUser, getNatalChartForUser } from "./chart-runtime";
 
 export type VoidEligibility =
   | { status: "unauthenticated" }
@@ -36,7 +36,7 @@ export async function getVoidEligibility(): Promise<VoidEligibility> {
 
   const { userId, username } = claims;
 
-  const s = getBirthProfileStatus(userId);
+  const s = await getBirthProfileStatusForUser(userId);
   if (!s.isComplete) {
     // Report the first missing field for precise redirect
     const missingField: VoidEligibility & { status: "incomplete-birth-data" } = {
@@ -53,7 +53,7 @@ export async function getVoidEligibility(): Promise<VoidEligibility> {
   }
 
   // Birth data complete — attempt to retrieve (or lazily compute) the natal chart
-  const chart = getOrComputeNatalChart(userId);
+  const chart = await getNatalChartForUser(userId);
   if (!chart) {
     return { status: "chart-pending", userId, username };
   }

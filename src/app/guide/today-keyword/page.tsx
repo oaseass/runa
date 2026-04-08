@@ -2,8 +2,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
-import { getOrComputeNatalChart } from "@/lib/server/chart-store";
-import { getTodayInterpretation } from "@/lib/server/chart-store";
+import { getNatalChartForUser, getTodayInterpretationForUser } from "@/lib/server/chart-runtime";
 import BottomNav from "@/components/BottomNav";
 import BackButton from "@/components/BackButton";
 
@@ -63,8 +62,8 @@ export default async function TodayKeywordPage() {
   let natal = null;
   let interp = null;
   try {
-    natal  = getOrComputeNatalChart(session.userId);
-    interp = getTodayInterpretation(session.userId);
+    natal = await getNatalChartForUser(session.userId);
+    interp = await getTodayInterpretationForUser(session.userId);
   } catch { /* show generic content */ }
 
   const keyword = interp?.keyPhrase ?? "오늘의 별이 말하는 한 가지.";

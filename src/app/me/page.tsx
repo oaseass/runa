@@ -5,7 +5,13 @@ import { redirect } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import VipBadge from "@/components/VipBadge";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
-import { getOrComputeNatalChart, getOnboardingProfile, getTodayInterpretation, getDomainReadings, getTransitDeepList } from "@/lib/server/chart-store";
+import {
+  getDomainReadingsForUser,
+  getNatalChartForUser,
+  getOnboardingProfileForUser,
+  getTodayInterpretationForUser,
+  getTransitDeepListForUser,
+} from "@/lib/server/chart-runtime";
 import { getPaidProductIds } from "@/lib/server/order-store";
 import {
   getPlanetReadings,
@@ -643,7 +649,7 @@ export default async function MePage({
   const { tab: rawTab } = await searchParams;
   const tab = (rawTab === "chart" || rawTab === "settings") ? rawTab : "updates";
 
-  const chart   = getOrComputeNatalChart(session.userId);
+  const chart = await getNatalChartForUser(session.userId);
   if (!chart) return <NoChartState username={session.username} />;
 
   // Payment check
@@ -661,14 +667,18 @@ export default async function MePage({
   const ascSignKo   = SIGN_KO[chart.ascendant.sign] ?? chart.ascendant.sign;
 
   // Daily interpretation — only fetched when UPDATES tab is active
-  const todayInterp   = tab === "updates" ? getTodayInterpretation(session.userId) : null;
-  const domainReads   = tab === "updates" ? getDomainReadings(session.userId) : null;
-  const deepAspects   = tab === "updates" ? getTransitDeepList(session.userId, new Date()) : null;
+  const [todayInterp, domainReads, deepAspects] = tab === "updates"
+    ? await Promise.all([
+        getTodayInterpretationForUser(session.userId),
+        getDomainReadingsForUser(session.userId, new Date()),
+        getTransitDeepListForUser(session.userId, new Date()),
+      ])
+    : [null, null, null];
 
   // Settings data (fetched only when needed but cheap enough to always load)
-  const profile    = getOnboardingProfile(session.userId);
-  const prefs      = getUserPreferences(session.userId);
-  const phone      = getUserPhoneNumber(session.userId);
+  const profile = await getOnboardingProfileForUser(session.userId);
+  const prefs = getUserPreferences(session.userId);
+  const phone = await getUserPhoneNumber(session.userId);
 
   return (
     <main className="screen luna-article-screen you-screen" aria-label="YOU">

@@ -15,7 +15,7 @@ const VALID_CATEGORIES: CategoryKey[] = ["self", "love", "work", "social"];
  *
  * 1. Re-validates session and chart eligibility independently of layout.
  * 2. Persists a void_analysis_requests record (status: "generating").
- * 3. Derives analysis from the real natal chart + today's transits — synchronously.
+ * 3. Derives analysis from the real natal chart + today's transits.
  * 4. Updates the record to "complete" (or "chart_missing"/"failed") immediately.
  * 5. Redirects to the durable /void/result/[id] page.
  */
@@ -61,12 +61,12 @@ export async function createAnalysisRequestAction(formData: FormData) {
     initialStatus: "generating",
   });
 
-  // 5. Derive analysis from real chart data (synchronous — no I/O beyond SQLite)
+  // 5. Derive analysis from real chart data
   let analysisJson: string | undefined;
   let finalStatus: "complete" | "chart_missing" | "failed" = "failed";
 
   try {
-    const output = generateVoidAnalysis(userId, category, questionText);
+    const output = await generateVoidAnalysis(userId, category, questionText);
     if (output) {
       analysisJson = JSON.stringify(output);
       finalStatus = "complete";

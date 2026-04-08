@@ -7,7 +7,7 @@
  * Same chart + same transit date → same output (deterministic).
  */
 
-import { getOrComputeNatalChart } from "./chart-store";
+import { getNatalChartForUser } from "./chart-runtime";
 import {
   interpretNatalChart,
   interpretDomains,
@@ -54,8 +54,8 @@ function tonePrefix(tone: "strength" | "challenge" | "neutral"): string {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export function generateAreaReport(userId: string): AreaReport | null {
-  const chart = getOrComputeNatalChart(userId);
+export async function generateAreaReport(userId: string): Promise<AreaReport | null> {
+  const chart = await getNatalChartForUser(userId);
   if (!chart) return null;
 
   const natal = interpretNatalChart(chart);

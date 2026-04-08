@@ -5,7 +5,7 @@ import BackButton from "@/components/BackButton";
 import { cookies } from "next/headers";
 import { verifySessionToken } from "@/lib/server/auth-session";
 import { getConnection, getCachedSynastry, saveSynastry } from "@/lib/server/connection-store";
-import { getOrComputeNatalChart } from "@/lib/server/chart-store";
+import { getNatalChartForUser } from "@/lib/server/chart-runtime";
 import { computeSynastry } from "@/lib/astrology/synastry";
 import { SIGN_KO, PLANET_KO } from "@/lib/astrology/interpret";
 import type { NatalChart } from "@/lib/astrology/types";
@@ -173,7 +173,7 @@ export default async function ConnectionInsightPage({
   if (!connection) notFound();
 
   // Load owner chart
-  const ownerChart = getOrComputeNatalChart(userId);
+  const ownerChart = await getNatalChartForUser(userId);
   if (!ownerChart) {
     return (
       <main className="screen luna-article-screen" aria-label="Connection insight">

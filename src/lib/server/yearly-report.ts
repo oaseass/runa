@@ -7,7 +7,7 @@
  * Same chart → same output (deterministic per year).
  */
 
-import { getOrComputeNatalChart } from "./chart-store";
+import { getNatalChartForUser } from "./chart-runtime";
 import {
   interpretNatalChart,
   interpretTransits,
@@ -65,8 +65,8 @@ function keyPlanetLine(chart: NatalChart): string {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export function generateYearlyReport(userId: string): YearlyReport | null {
-  const chart = getOrComputeNatalChart(userId);
+export async function generateYearlyReport(userId: string): Promise<YearlyReport | null> {
+  const chart = await getNatalChartForUser(userId);
   if (!chart) return null;
 
   const natal = interpretNatalChart(chart);

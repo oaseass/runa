@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
-import { getOrComputeNatalChart, getNatalInterpretation } from "@/lib/server/chart-store";
+import { getNatalChartForUser, getNatalInterpretationForUser } from "@/lib/server/chart-runtime";
 import type { NatalInterpretation } from "@/lib/astrology/types";
 import BottomNav from "@/components/BottomNav";
 import BackButton from "@/components/BackButton";
@@ -47,8 +47,8 @@ export default async function ProfileChartPage() {
     return <NoDataState />;
   }
 
-  const chart = getOrComputeNatalChart(session.userId);
-  const interp: NatalInterpretation | null = chart ? getNatalInterpretation(session.userId) : null;
+  const chart = await getNatalChartForUser(session.userId);
+  const interp: NatalInterpretation | null = chart ? await getNatalInterpretationForUser(session.userId) : null;
 
   if (!chart || !interp) {
     return <NoDataState />;

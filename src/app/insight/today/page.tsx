@@ -5,7 +5,11 @@ import BottomNav from "@/components/BottomNav";
 import BackButton from "@/components/BackButton";
 import { devPurchaseAction } from "@/app/store/_actions/devPurchaseAction";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
-import { getDateInterpretation, getDomainReadingsByDate, getTransitChartData } from "@/lib/server/chart-store";
+import {
+  getDateInterpretationForUser,
+  getDomainReadingsByDateForUser,
+  getTransitChartDataForUser,
+} from "@/lib/server/chart-runtime";
 import type { TransitInterpretation, DomainReading } from "@/lib/astrology/types";
 import FeedbackRow from "./_components/FeedbackRow";
 import NoteField from "./_components/NoteField";
@@ -115,11 +119,11 @@ export async function renderInsightTodayPage(dateParam?: string) {
     0,
   );
 
-  const interp: TransitInterpretation | null = getDateInterpretation(session.userId, reportDate);
+  const interp: TransitInterpretation | null = await getDateInterpretationForUser(session.userId, reportDate);
   if (!interp) return <NoDataState />;
 
-  const chartData = getTransitChartData(session.userId, reportDate);
-  const domains: DomainReading[] = getDomainReadingsByDate(session.userId, reportDate) ?? [];
+  const chartData = await getTransitChartDataForUser(session.userId, reportDate);
+  const domains: DomainReading[] = (await getDomainReadingsByDateForUser(session.userId, reportDate)) ?? [];
   const strengthDomains = domains.filter((d) => d.tone !== "challenge");
   const challengeDomains = domains.filter((d) => d.tone === "challenge");
 

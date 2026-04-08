@@ -56,9 +56,10 @@ export async function changeUsernameAction(
   const verified = await verifyAccountDraftPassword(claims.username, password);
   if (!verified) return { success: false, error: "wrong-password" };
 
-  const result = changeUsername(claims.userId, newUsername);
+  const result = await changeUsername(claims.userId, newUsername);
   if (result === "taken")  return { success: false, error: "taken" };
   if (result === "invalid") return { success: false, error: "invalid" };
+  if (result === "not-found") return { success: false, error: "auth" };
 
   // Re-issue session cookie with new username
   const newToken = createSessionToken({

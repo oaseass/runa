@@ -237,7 +237,7 @@ export default async function PaymentSuccessPage({
   // New SKU: annual report
   if (order.productId === "annual_report") {
     try {
-      const report = generateYearlyReport(claims.userId);
+      const report = await generateYearlyReport(claims.userId);
       if (report) setOrderReportJson(orderId, JSON.stringify(report));
     } catch { /* best-effort */ }
     redirect(`/store/report/${orderId}`);
@@ -246,7 +246,7 @@ export default async function PaymentSuccessPage({
   // New SKU: area reading
   if (order.productId === "area_reading") {
     try {
-      const report = generateAreaReport(claims.userId);
+      const report = await generateAreaReport(claims.userId);
       if (report) setOrderReportJson(orderId, JSON.stringify(report));
     } catch { /* best-effort */ }
     redirect(`/store/report/${orderId}`);
@@ -277,7 +277,7 @@ export default async function PaymentSuccessPage({
     let analysisJson: string | undefined;
 
     try {
-      const output = generateVoidAnalysis(claims.userId, category, questionText);
+      const output = await generateVoidAnalysis(claims.userId, category, questionText);
       if (output) {
         analysisJson = JSON.stringify(output);
         finalStatus = "complete";
@@ -297,7 +297,7 @@ export default async function PaymentSuccessPage({
   // For yearly / area reports: generate report, store, redirect to result
   if (order.productId === "area") {
     try {
-      const report = generateAreaReport(claims.userId);
+      const report = await generateAreaReport(claims.userId);
       if (report) {
         setOrderReportJson(orderId, JSON.stringify(report));
       }
@@ -307,7 +307,7 @@ export default async function PaymentSuccessPage({
 
   if (order.productId === "yearly") {
     try {
-      const report = generateYearlyReport(claims.userId);
+      const report = await generateYearlyReport(claims.userId);
       if (report) {
         setOrderReportJson(orderId, JSON.stringify(report));
       }

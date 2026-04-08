@@ -142,17 +142,17 @@ function mapStoredAuthAccount(row: LocalAuthRow): StoredAuthAccount {
           birthTime: hasBirthTime
             ? {
                 birthDate: row.birth_date,
-                hour: row.birth_hour ?? 0,
-                minute: row.birth_minute ?? 0,
-                formatted: row.birth_time_text ?? "",
+                hour: row.birth_hour,
+                minute: row.birth_minute,
+                formatted: row.birth_time_text,
               }
             : null,
           birthPlace: hasBirthPlace
             ? {
-                placeId: row.birth_place_id ?? "",
-                fullText: row.birth_place_full_text ?? "",
-                mainText: row.birth_place_main_text ?? "",
-                secondaryText: row.birth_place_secondary_text ?? "",
+                placeId: row.birth_place_id,
+                fullText: row.birth_place_full_text,
+                mainText: row.birth_place_main_text,
+                secondaryText: row.birth_place_secondary_text,
                 latitude: row.birth_latitude,
                 longitude: row.birth_longitude,
                 timezone: row.birth_timezone,

@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
-import { getPersonalizedBestDays } from "@/lib/server/chart-store";
+import { getPersonalizedBestDaysForUser } from "@/lib/server/chart-runtime";
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   const count     = countParam     ? Math.min(parseInt(countParam,     10), 30) : 10;
   const daysAhead = daysAheadParam ? Math.min(parseInt(daysAheadParam, 10), 90) : 45;
 
-  const bestDays = getPersonalizedBestDays(session.userId, count, daysAhead);
+  const bestDays = await getPersonalizedBestDaysForUser(session.userId, count, daysAhead);
   if (!bestDays) {
     return NextResponse.json(
       { success: false, error: "Birth data incomplete. Complete onboarding to generate best days." },
