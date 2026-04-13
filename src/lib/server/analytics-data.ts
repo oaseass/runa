@@ -1,4 +1,6 @@
-﻿import { db } from "./db";
+﻿import type { StoredAuthAccount } from "@/lib/server/auth-storage";
+import { listStoredAuthAccounts } from "./auth-account-store";
+import { db } from "./db";
 
 /* ── period helper ──────────────────────────────────────────── */
 export type Period = "1d" | "7d" | "30d" | "90d" | "365d";
@@ -12,6 +14,129 @@ function sinceClause(p: Period): string {
     "365d":"'-365 days'",
   };
   return `date('now', ${map[p]})`;
+}
+
+type AuthAnalyticsContext = {
+  accounts: StoredAuthAccount[];
+};
+
+const PERIOD_DAYS: Record<Period, number> = {
+  "1d": 1,
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+  "365d": 365,
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const WEEK_MS = 7 * DAY_MS;
+
+export async function getAuthAnalyticsContext(): Promise<AuthAnalyticsContext> {
+  return { accounts: await listStoredAuthAccounts() };
+}
+
+async function resolveAuthAnalyticsContext(context?: AuthAnalyticsContext) {
+  return context ?? getAuthAnalyticsContext();
+}
+
+function parseTimestamp(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function getUtcDayStart(daysAgo = 0) {
+  const today = new Date();
+  const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  start.setUTCDate(start.getUTCDate() - daysAgo);
+  return start;
+}
+
+function getSinceTimestamp(period: Period) {
+  return getUtcDayStart(PERIOD_DAYS[period]).getTime();
+}
+
+function isTimestampOnOrAfter(value: string | null | undefined, sinceTimestamp: number) {
+  const timestamp = parseTimestamp(value);
+  return timestamp !== null && timestamp >= sinceTimestamp;
+}
+
+function filterAccountsCreatedSince(accounts: StoredAuthAccount[], sinceTimestamp: number) {
+  return accounts.filter((account) => isTimestampOnOrAfter(account.createdAt, sinceTimestamp));
+}
+
+function countAccountsCreatedSince(accounts: StoredAuthAccount[], sinceTimestamp: number) {
+  return filterAccountsCreatedSince(accounts, sinceTimestamp).length;
+}
+
+function toDateKey(value: string | null | undefined) {
+  const timestamp = parseTimestamp(value);
+  if (timestamp === null) {
+    return null;
+  }
+
+  return new Date(timestamp).toISOString().slice(0, 10);
+}
+
+function getDistinctUserIdSet(query: string, params: unknown[] = []) {
+  const statement = db.prepare(query);
+  const rows = (params.length > 0 ? statement.all(...params) : statement.all()) as Array<{ user_id: string | null }>;
+  const userIds = new Set<string>();
+
+  for (const row of rows) {
+    if (row.user_id) {
+      userIds.add(row.user_id);
+    }
+  }
+
+  return userIds;
+}
+
+function countSetIntersection(left: Set<string>, right: Set<string>) {
+  const [smaller, larger] = left.size <= right.size ? [left, right] : [right, left];
+  let count = 0;
+
+  for (const value of smaller) {
+    if (larger.has(value)) {
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
+function hasProfileBirthDate(account: StoredAuthAccount) {
+  return Boolean(account.onboardingProfile?.birthTime?.birthDate);
+}
+
+function hasProfileBirthHour(account: StoredAuthAccount) {
+  return account.onboardingProfile?.birthTime?.hour != null;
+}
+
+function getWeekStartTimestamp(date: Date) {
+  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = start.getUTCDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  start.setUTCDate(start.getUTCDate() + offset);
+  return start.getTime();
+}
+
+function getCohortWeekLabel(date: Date) {
+  const year = date.getUTCFullYear();
+  const target = new Date(Date.UTC(year, date.getUTCMonth(), date.getUTCDate()));
+  const firstDayOfYear = new Date(Date.UTC(year, 0, 1));
+  const firstDay = firstDayOfYear.getUTCDay();
+  const firstMonday = new Date(firstDayOfYear);
+  const daysUntilFirstMonday = firstDay === 1 ? 0 : firstDay === 0 ? 1 : 8 - firstDay;
+  firstMonday.setUTCDate(firstMonday.getUTCDate() + daysUntilFirstMonday);
+
+  const weekNumber =
+    target < firstMonday ? 0 : Math.floor((getWeekStartTimestamp(target) - getWeekStartTimestamp(firstMonday)) / WEEK_MS) + 1;
+
+  return `${year}-W${String(Math.max(0, weekNumber)).padStart(2, "0")}`;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -55,14 +180,27 @@ export function getDailyPV(days: number): DailyPoint[] {
   `).all(days) as DailyPoint[];
 }
 
-export function getDailySignups(days: number): DailyPoint[] {
-  return db.prepare(`
-    SELECT date(created_at) AS date, COUNT(*) AS value
-    FROM users
-    WHERE created_at >= date('now', '-' || ? || ' days')
-    GROUP BY date(created_at)
-    ORDER BY date ASC
-  `).all(days) as DailyPoint[];
+export async function getDailySignups(days: number, context?: AuthAnalyticsContext): Promise<DailyPoint[]> {
+  const { accounts } = await resolveAuthAnalyticsContext(context);
+  const sinceTimestamp = getUtcDayStart(days).getTime();
+  const counts = new Map<string, number>();
+
+  for (const account of accounts) {
+    if (!isTimestampOnOrAfter(account.createdAt, sinceTimestamp)) {
+      continue;
+    }
+
+    const date = toDateKey(account.createdAt);
+    if (!date) {
+      continue;
+    }
+
+    counts.set(date, (counts.get(date) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, value]) => ({ date, value }));
 }
 
 export type HourPoint = { hour: number; pv: number };
@@ -86,7 +224,7 @@ export type ActivityMetrics = {
   fromTracking: boolean;
 };
 
-export function getActivityMetrics(): ActivityMetrics {
+export async function getActivityMetrics(context?: AuthAnalyticsContext): Promise<ActivityMetrics> {
   const pvCount = (db.prepare("SELECT COUNT(*) AS c FROM page_views").get() as { c: number }).c;
 
   if (pvCount > 0) {
@@ -107,13 +245,39 @@ export function getActivityMetrics(): ActivityMetrics {
   }
 
   /* fallback: count distinct users active (new signups as proxy) */
-  const dau = (db.prepare("SELECT COUNT(*) AS c FROM users WHERE created_at >= date('now')").get() as { c: number }).c;
-  const wau = (db.prepare("SELECT COUNT(*) AS c FROM users WHERE created_at >= date('now', '-7 days') OR id IN (SELECT DISTINCT user_id FROM void_analysis_requests WHERE created_at >= date('now', '-7 days')) OR id IN (SELECT DISTINCT user_id FROM orders WHERE created_at >= date('now', '-7 days'))").get() as { c: number }).c;
-  const mau = (db.prepare("SELECT COUNT(*) AS c FROM users WHERE created_at >= date('now', '-30 days') OR id IN (SELECT DISTINCT user_id FROM void_analysis_requests WHERE created_at >= date('now', '-30 days')) OR id IN (SELECT DISTINCT user_id FROM orders WHERE created_at >= date('now', '-30 days'))").get() as { c: number }).c;
+  const { accounts } = await resolveAuthAnalyticsContext(context);
+  const knownUserIds = new Set(accounts.map((account) => account.id));
+  const dau = countAccountsCreatedSince(accounts, getUtcDayStart().getTime());
+
+  const wauUserIds = new Set(filterAccountsCreatedSince(accounts, getUtcDayStart(7).getTime()).map((account) => account.id));
+  for (const userId of getDistinctUserIdSet("SELECT DISTINCT user_id FROM void_analysis_requests WHERE created_at >= date('now', '-7 days')")) {
+    if (knownUserIds.has(userId)) {
+      wauUserIds.add(userId);
+    }
+  }
+  for (const userId of getDistinctUserIdSet("SELECT DISTINCT user_id FROM orders WHERE created_at >= date('now', '-7 days')")) {
+    if (knownUserIds.has(userId)) {
+      wauUserIds.add(userId);
+    }
+  }
+
+  const mauUserIds = new Set(filterAccountsCreatedSince(accounts, getUtcDayStart(30).getTime()).map((account) => account.id));
+  for (const userId of getDistinctUserIdSet("SELECT DISTINCT user_id FROM void_analysis_requests WHERE created_at >= date('now', '-30 days')")) {
+    if (knownUserIds.has(userId)) {
+      mauUserIds.add(userId);
+    }
+  }
+  for (const userId of getDistinctUserIdSet("SELECT DISTINCT user_id FROM orders WHERE created_at >= date('now', '-30 days')")) {
+    if (knownUserIds.has(userId)) {
+      mauUserIds.add(userId);
+    }
+  }
 
   return {
-    dau, wau, mau,
-    stickiness: mau > 0 ? Math.round((dau / mau) * 100) : 0,
+    dau,
+    wau: wauUserIds.size,
+    mau: mauUserIds.size,
+    stickiness: mauUserIds.size > 0 ? Math.round((dau / mauUserIds.size) * 100) : 0,
     fromTracking: false,
   };
 }
@@ -158,38 +322,16 @@ export function getPageStats(period: Period): PageStat[] {
 export type FunnelStep = { label: string; count: number; rate: number };
 
 /* 가입 퍼널: 가입 → 출생정보 → 별지도 → 첫Void → 첫결제 */
-export function getSignupFunnel(period: Period): FunnelStep[] {
-  const since = sinceClause(period);
-
-  const signups = (db.prepare(
-    `SELECT COUNT(*) AS c FROM users WHERE created_at >= ${since}`
-  ).get() as { c: number }).c;
-
-  const profiles = (db.prepare(
-    `SELECT COUNT(*) AS c FROM users u
-     JOIN onboarding_profiles op ON op.user_id = u.id
-     WHERE u.created_at >= ${since} AND op.birth_date IS NOT NULL`
-  ).get() as { c: number }).c;
-
-  const charts = (db.prepare(
-    `SELECT COUNT(*) AS c FROM users u
-     JOIN natal_charts nc ON nc.user_id = u.id
-     WHERE u.created_at >= ${since}`
-  ).get() as { c: number }).c;
-
-  const firstVoid = (db.prepare(
-    `SELECT COUNT(DISTINCT v.user_id) AS c
-     FROM void_analysis_requests v
-     JOIN users u ON u.id = v.user_id
-     WHERE u.created_at >= ${since}`
-  ).get() as { c: number }).c;
-
-  const firstPaid = (db.prepare(
-    `SELECT COUNT(DISTINCT o.user_id) AS c
-     FROM orders o
-     JOIN users u ON u.id = o.user_id
-     WHERE o.status = 'paid' AND u.created_at >= ${since}`
-  ).get() as { c: number }).c;
+export async function getSignupFunnel(period: Period, context?: AuthAnalyticsContext): Promise<FunnelStep[]> {
+  const { accounts } = await resolveAuthAnalyticsContext(context);
+  const signupsSince = getSinceTimestamp(period);
+  const signupAccounts = filterAccountsCreatedSince(accounts, signupsSince);
+  const signupUserIds = new Set(signupAccounts.map((account) => account.id));
+  const signups = signupAccounts.length;
+  const profiles = signupAccounts.filter(hasProfileBirthDate).length;
+  const charts = countSetIntersection(signupUserIds, getDistinctUserIdSet("SELECT DISTINCT user_id FROM natal_charts"));
+  const firstVoid = countSetIntersection(signupUserIds, getDistinctUserIdSet("SELECT DISTINCT user_id FROM void_analysis_requests"));
+  const firstPaid = countSetIntersection(signupUserIds, getDistinctUserIdSet("SELECT DISTINCT user_id FROM orders WHERE status = 'paid'"));
 
   const steps = [
     { label: "\uc2e0\uaddc \uac00\uc785",       count: signups  },
@@ -282,80 +424,137 @@ export type CohortRow = {
   w4: number;
 };
 
-export function getCohortRetention(): CohortRow[] {
-  /* activity = any void (complete) OR any paid order */
-  const rows = db.prepare(`
-    WITH cohorts AS (
-      SELECT id, strftime('%Y-W%W', created_at) AS cohort_week, created_at AS signed_up
-      FROM users WHERE created_at >= date('now', '-10 weeks')
-    ),
-    activity AS (
-      SELECT user_id, created_at AS act_at
-      FROM void_analysis_requests WHERE status = 'complete'
-      UNION ALL
-      SELECT user_id, paid_at AS act_at
-      FROM orders WHERE status = 'paid' AND paid_at IS NOT NULL
-    )
-    SELECT
-      c.cohort_week AS cohort,
-      COUNT(DISTINCT c.id) AS size,
-      COUNT(DISTINCT CASE WHEN CAST((julianday(a.act_at) - julianday(c.signed_up)) / 7 AS INTEGER) = 0 THEN c.id END) AS w0,
-      COUNT(DISTINCT CASE WHEN CAST((julianday(a.act_at) - julianday(c.signed_up)) / 7 AS INTEGER) = 1 THEN c.id END) AS w1,
-      COUNT(DISTINCT CASE WHEN CAST((julianday(a.act_at) - julianday(c.signed_up)) / 7 AS INTEGER) = 2 THEN c.id END) AS w2,
-      COUNT(DISTINCT CASE WHEN CAST((julianday(a.act_at) - julianday(c.signed_up)) / 7 AS INTEGER) = 3 THEN c.id END) AS w3,
-      COUNT(DISTINCT CASE WHEN CAST((julianday(a.act_at) - julianday(c.signed_up)) / 7 AS INTEGER) = 4 THEN c.id END) AS w4
-    FROM cohorts c
-    LEFT JOIN activity a ON a.user_id = c.id AND a.act_at >= c.signed_up
-    GROUP BY c.cohort_week
-    ORDER BY c.cohort_week DESC
-    LIMIT 10
-  `).all() as CohortRow[];
-  return rows.map((r) => ({
-    cohort: r.cohort,
-    size:   r.size ?? 0,
-    w0: r.size > 0 ? Math.round(((r.w0 ?? 0) / r.size) * 100) : 0,
-    w1: r.size > 0 ? Math.round(((r.w1 ?? 0) / r.size) * 100) : 0,
-    w2: r.size > 0 ? Math.round(((r.w2 ?? 0) / r.size) * 100) : 0,
-    w3: r.size > 0 ? Math.round(((r.w3 ?? 0) / r.size) * 100) : 0,
-    w4: r.size > 0 ? Math.round(((r.w4 ?? 0) / r.size) * 100) : 0,
-  }));
+export async function getCohortRetention(context?: AuthAnalyticsContext): Promise<CohortRow[]> {
+  const { accounts } = await resolveAuthAnalyticsContext(context);
+  const cohortAccounts = filterAccountsCreatedSince(accounts, getUtcDayStart(70).getTime());
+  if (cohortAccounts.length === 0) {
+    return [];
+  }
+
+  const activityRows = db.prepare(`
+    SELECT user_id, created_at AS act_at
+    FROM void_analysis_requests WHERE status = 'complete'
+    UNION ALL
+    SELECT user_id, paid_at AS act_at
+    FROM orders WHERE status = 'paid' AND paid_at IS NOT NULL
+  `).all() as Array<{ user_id: string | null; act_at: string | null }>;
+
+  const activityByUser = new Map<string, number[]>();
+  for (const row of activityRows) {
+    if (!row.user_id) {
+      continue;
+    }
+
+    const activityTimestamp = parseTimestamp(row.act_at);
+    if (activityTimestamp === null) {
+      continue;
+    }
+
+    const existing = activityByUser.get(row.user_id);
+    if (existing) {
+      existing.push(activityTimestamp);
+      continue;
+    }
+
+    activityByUser.set(row.user_id, [activityTimestamp]);
+  }
+
+  const cohorts = new Map<string, { row: CohortRow; sortTimestamp: number }>();
+  for (const account of cohortAccounts) {
+    const signedUpTimestamp = parseTimestamp(account.createdAt);
+    if (signedUpTimestamp === null) {
+      continue;
+    }
+
+    const signedUpDate = new Date(signedUpTimestamp);
+    const cohort = getCohortWeekLabel(signedUpDate);
+    const existing = cohorts.get(cohort) ?? {
+      row: { cohort, size: 0, w0: 0, w1: 0, w2: 0, w3: 0, w4: 0 },
+      sortTimestamp: getWeekStartTimestamp(signedUpDate),
+    };
+
+    existing.row.size += 1;
+
+    const seenWeeks = new Set<number>();
+    for (const activityTimestamp of activityByUser.get(account.id) ?? []) {
+      if (activityTimestamp < signedUpTimestamp) {
+        continue;
+      }
+
+      const weekIndex = Math.floor((activityTimestamp - signedUpTimestamp) / WEEK_MS);
+      if (weekIndex >= 0 && weekIndex <= 4) {
+        seenWeeks.add(weekIndex);
+      }
+    }
+
+    for (const weekIndex of seenWeeks) {
+      if (weekIndex === 0) existing.row.w0 += 1;
+      if (weekIndex === 1) existing.row.w1 += 1;
+      if (weekIndex === 2) existing.row.w2 += 1;
+      if (weekIndex === 3) existing.row.w3 += 1;
+      if (weekIndex === 4) existing.row.w4 += 1;
+    }
+
+    cohorts.set(cohort, existing);
+  }
+
+  return Array.from(cohorts.values())
+    .sort((left, right) => right.sortTimestamp - left.sortTimestamp)
+    .slice(0, 10)
+    .map(({ row }) => ({
+      cohort: row.cohort,
+      size: row.size,
+      w0: row.size > 0 ? Math.round((row.w0 / row.size) * 100) : 0,
+      w1: row.size > 0 ? Math.round((row.w1 / row.size) * 100) : 0,
+      w2: row.size > 0 ? Math.round((row.w2 / row.size) * 100) : 0,
+      w3: row.size > 0 ? Math.round((row.w3 / row.size) * 100) : 0,
+      w4: row.size > 0 ? Math.round((row.w4 / row.size) * 100) : 0,
+    }));
 }
 
 export type UserSegment = { label: string; count: number; pct: number; color: string };
 
-export function getUserSegments(): UserSegment[] {
-  const total = (db.prepare("SELECT COUNT(*) AS c FROM users").get() as { c: number }).c;
+export async function getUserSegments(context?: AuthAnalyticsContext): Promise<UserSegment[]> {
+  const { accounts } = await resolveAuthAnalyticsContext(context);
+  const total = accounts.length;
   if (total === 0) return [];
 
+  const knownUserIds = new Set(accounts.map((account) => account.id));
+
   /* subscribed: has paid membership or yearly */
-  const subscribed = (db.prepare(
-    "SELECT COUNT(DISTINCT user_id) AS c FROM orders WHERE status='paid' AND product_id IN ('membership','yearly')"
-  ).get() as { c: number }).c;
+  const subscribedUserIds = getDistinctUserIdSet(
+    "SELECT DISTINCT user_id FROM orders WHERE status='paid' AND product_id IN ('membership','yearly')",
+  );
+  const subscribed = countSetIntersection(knownUserIds, subscribedUserIds);
 
   /* paid: has any paid order but not membership */
-  const paid = (db.prepare(
-    "SELECT COUNT(DISTINCT user_id) AS c FROM orders WHERE status='paid'"
-  ).get() as { c: number }).c;
+  const paidUserIds = getDistinctUserIdSet("SELECT DISTINCT user_id FROM orders WHERE status='paid'");
+  const paid = countSetIntersection(knownUserIds, paidUserIds);
 
   /* high-active: 5+ void completes in last 30 days */
-  const highActive = (db.prepare(
-    "SELECT COUNT(*) AS c FROM (SELECT user_id FROM void_analysis_requests WHERE status='complete' AND created_at >= date('now','-30 days') GROUP BY user_id HAVING COUNT(*) >= 5)"
-  ).get() as { c: number }).c;
+  const highActiveUserIds = getDistinctUserIdSet(
+    "SELECT user_id FROM void_analysis_requests WHERE status='complete' AND created_at >= date('now','-30 days') GROUP BY user_id HAVING COUNT(*) >= 5",
+  );
+  const highActive = countSetIntersection(knownUserIds, highActiveUserIds);
 
   /* churn-risk: paid/subscribed but zero activity in last 30 days */
-  const churnRisk = (db.prepare(
-    `SELECT COUNT(DISTINCT u.id) AS c FROM users u
-     JOIN orders o ON o.user_id = u.id
-     WHERE o.status = 'paid'
-       AND u.id NOT IN (
-         SELECT DISTINCT user_id FROM void_analysis_requests WHERE created_at >= date('now','-30 days')
-         UNION
-         SELECT DISTINCT user_id FROM orders WHERE created_at >= date('now','-30 days')
-       )`
-  ).get() as { c: number }).c;
+  const recentActivityUserIds = new Set<string>();
+  for (const userId of getDistinctUserIdSet("SELECT DISTINCT user_id FROM void_analysis_requests WHERE created_at >= date('now','-30 days')")) {
+    recentActivityUserIds.add(userId);
+  }
+  for (const userId of getDistinctUserIdSet("SELECT DISTINCT user_id FROM orders WHERE created_at >= date('now','-30 days')")) {
+    recentActivityUserIds.add(userId);
+  }
+
+  let churnRisk = 0;
+  for (const userId of paidUserIds) {
+    if (knownUserIds.has(userId) && !recentActivityUserIds.has(userId)) {
+      churnRisk += 1;
+    }
+  }
 
   const free = total - paid;
-  const paidOnly = paid - subscribed;
+  const paidOnly = Math.max(0, paid - subscribed);
 
   const segs: { label: string; count: number; color: string }[] = [
     { label: "\ubb34\ub8cc",       count: free,       color: "#6b7280" },
@@ -407,20 +606,13 @@ const PRODUCT_LABEL: Record<string, string> = {
   question:   "\ub2e8\uc77c \uc9c8\ubb38",
 };
 
-export function getLunaMetrics(): LunaMetrics {
-  const totalUsers = (db.prepare("SELECT COUNT(*) AS c FROM users").get() as { c: number }).c;
-
-  const profileCompleted = (db.prepare(
-    "SELECT COUNT(*) AS c FROM onboarding_profiles WHERE birth_date IS NOT NULL"
-  ).get() as { c: number }).c;
-
-  const birthTimeEntered = (db.prepare(
-    "SELECT COUNT(*) AS c FROM onboarding_profiles WHERE birth_hour IS NOT NULL"
-  ).get() as { c: number }).c;
-
-  const chartGenerated = (db.prepare(
-    "SELECT COUNT(*) AS c FROM natal_charts"
-  ).get() as { c: number }).c;
+export async function getLunaMetrics(context?: AuthAnalyticsContext): Promise<LunaMetrics> {
+  const { accounts } = await resolveAuthAnalyticsContext(context);
+  const totalUsers = accounts.length;
+  const knownUserIds = new Set(accounts.map((account) => account.id));
+  const profileCompleted = accounts.filter(hasProfileBirthDate).length;
+  const birthTimeEntered = accounts.filter(hasProfileBirthHour).length;
+  const chartGenerated = countSetIntersection(knownUserIds, getDistinctUserIdSet("SELECT DISTINCT user_id FROM natal_charts"));
 
   const voidDomainRaw = db.prepare(
     "SELECT category, COUNT(*) AS cnt FROM void_analysis_requests GROUP BY category ORDER BY cnt DESC"
@@ -557,12 +749,12 @@ export type PeriodComparison = {
 };
 
 /** 두 기간 매출 비교 (지정 기간 vs 직전 같은 길이 기간) */
-export function getRevenuePeriodComparison(period: Period): {
+export async function getRevenuePeriodComparison(period: Period, context?: AuthAnalyticsContext): Promise<{
   revenue:  PeriodComparison;
   orders:   PeriodComparison;
   newUsers: PeriodComparison;
   voidCompleted: PeriodComparison;
-} {
+}> {
   const daysMap: Record<Period, number> = { "1d": 1, "7d": 7, "30d": 30, "90d": 90, "365d": 365 };
   const d = daysMap[period];
 
@@ -584,13 +776,27 @@ export function getRevenuePeriodComparison(period: Period): {
     FROM orders WHERE status = 'paid'
   `).get([d, d * 2, d]) as { cur: number | null; prev: number | null };
 
-  const usr = db.prepare(`
-    SELECT
-      SUM(CASE WHEN created_at >= date('now', '-' || ? || ' days') THEN 1 ELSE 0 END) AS cur,
-      SUM(CASE WHEN created_at >= date('now', '-' || ? || ' days')
-               AND created_at  <  date('now', '-' || ? || ' days') THEN 1 ELSE 0 END) AS prev
-    FROM users
-  `).get([d, d * 2, d]) as { cur: number | null; prev: number | null };
+  const { accounts } = await resolveAuthAnalyticsContext(context);
+  const currentStart = getUtcDayStart(d).getTime();
+  const previousStart = getUtcDayStart(d * 2).getTime();
+  let currentUsers = 0;
+  let previousUsers = 0;
+
+  for (const account of accounts) {
+    const createdAt = parseTimestamp(account.createdAt);
+    if (createdAt === null) {
+      continue;
+    }
+
+    if (createdAt >= currentStart) {
+      currentUsers += 1;
+      continue;
+    }
+
+    if (createdAt >= previousStart) {
+      previousUsers += 1;
+    }
+  }
 
   const vod = db.prepare(`
     SELECT
@@ -614,7 +820,7 @@ export function getRevenuePeriodComparison(period: Period): {
   return {
     revenue:       cmp(rev.cur,  rev.prev),
     orders:        cmp(ord.cur,  ord.prev),
-    newUsers:      cmp(usr.cur,  usr.prev),
+    newUsers:      cmp(currentUsers, previousUsers),
     voidCompleted: cmp(vod.cur,  vod.prev),
   };
 }
@@ -764,58 +970,51 @@ export type VipFunnel = {
   yearlyVip:       number;  // vip_source = vip_yearly
 };
 
-export function getVipFunnel(period: Period): VipFunnel {
-  const since = sinceClause(period);
-
-  const registered = (db.prepare(
-    `SELECT COUNT(*) AS c FROM users WHERE created_at >= ${since}`
-  ).get() as { c: number }).c;
-
-  const hasChart = (db.prepare(`
-    SELECT COUNT(DISTINCT nc.user_id) AS c
-    FROM natal_charts nc
-    JOIN users u ON u.id = nc.user_id
-    WHERE u.created_at >= ${since}
-  `).get() as { c: number }).c;
-
-  const usedVoid = (db.prepare(`
-    SELECT COUNT(DISTINCT v.user_id) AS c
-    FROM void_analysis_requests v
-    JOIN users u ON u.id = v.user_id
-    WHERE u.created_at >= ${since}
-  `).get() as { c: number }).c;
-
-  const everPaid = (db.prepare(`
-    SELECT COUNT(DISTINCT o.user_id) AS c
-    FROM orders o
-    JOIN users u ON u.id = o.user_id
-    WHERE o.status = 'paid' AND u.created_at >= ${since}
-  `).get() as { c: number }).c;
+export async function getVipFunnel(period: Period, context?: AuthAnalyticsContext): Promise<VipFunnel> {
+  const { accounts } = await resolveAuthAnalyticsContext(context);
+  const sinceTimestamp = getSinceTimestamp(period);
+  const registeredAccounts = filterAccountsCreatedSince(accounts, sinceTimestamp);
+  const registeredUserIds = new Set(registeredAccounts.map((account) => account.id));
+  const registered = registeredAccounts.length;
+  const hasChart = countSetIntersection(registeredUserIds, getDistinctUserIdSet("SELECT DISTINCT user_id FROM natal_charts"));
+  const usedVoid = countSetIntersection(registeredUserIds, getDistinctUserIdSet("SELECT DISTINCT user_id FROM void_analysis_requests"));
+  const everPaid = countSetIntersection(registeredUserIds, getDistinctUserIdSet("SELECT DISTINCT user_id FROM orders WHERE status = 'paid'"));
 
   const now = new Date().toISOString();
+  const vipRows = db.prepare(`
+    SELECT user_id, vip_source
+    FROM entitlements
+    WHERE is_vip = 1
+      AND (vip_expires_at IS NULL
+           OR vip_expires_at > @now
+           OR (vip_grace_until IS NOT NULL AND vip_grace_until > @now))
+  `).all({ now }) as Array<{ user_id: string | null; vip_source: string | null }>;
 
-  const vipRow = db.prepare(`
-    SELECT
-      SUM(e.is_vip) AS active,
-      SUM(CASE WHEN e.vip_source = 'vip_monthly' THEN e.is_vip ELSE 0 END) AS monthly,
-      SUM(CASE WHEN e.vip_source = 'vip_yearly'  THEN e.is_vip ELSE 0 END) AS yearly
-    FROM entitlements e
-    JOIN users u ON u.id = e.user_id
-    WHERE u.created_at >= ${since}
-      AND e.is_vip = 1
-      AND (e.vip_expires_at IS NULL
-           OR e.vip_expires_at > @now
-           OR (e.vip_grace_until IS NOT NULL AND e.vip_grace_until > @now))
-  `).get({ now }) as { active: number | null; monthly: number | null; yearly: number | null };
+  const activeVipUsers = new Set<string>();
+  const monthlyVipUsers = new Set<string>();
+  const yearlyVipUsers = new Set<string>();
+  for (const row of vipRows) {
+    if (!row.user_id || !registeredUserIds.has(row.user_id)) {
+      continue;
+    }
+
+    activeVipUsers.add(row.user_id);
+    if (row.vip_source === "vip_monthly") {
+      monthlyVipUsers.add(row.user_id);
+    }
+    if (row.vip_source === "vip_yearly") {
+      yearlyVipUsers.add(row.user_id);
+    }
+  }
 
   return {
     registered,
     hasChart,
     usedVoid,
     everPaid,
-    activeVip:  vipRow.active  ?? 0,
-    monthlyVip: vipRow.monthly ?? 0,
-    yearlyVip:  vipRow.yearly  ?? 0,
+    activeVip: activeVipUsers.size,
+    monthlyVip: monthlyVipUsers.size,
+    yearlyVip: yearlyVipUsers.size,
   };
 }
 
@@ -831,7 +1030,7 @@ export type ServiceSignals = {
   failedOrders1h: number;  // 최근 1시간 결제 실패
 };
 
-export function getServiceSignals(): ServiceSignals {
+export async function getServiceSignals(context?: AuthAnalyticsContext): Promise<ServiceSignals> {
   const iapHealth = getIapHealthSummary();
 
   const voidQueueLen = (db.prepare(
@@ -842,9 +1041,8 @@ export function getServiceSignals(): ServiceSignals {
     "SELECT COALESCE(SUM(amount),0) AS s FROM orders WHERE status='paid' AND paid_at >= datetime('now','-1 hour')"
   ).get() as { s: number }).s;
 
-  const newUsersToday = (db.prepare(
-    "SELECT COUNT(*) AS c FROM users WHERE created_at >= date('now')"
-  ).get() as { c: number }).c;
+  const { accounts } = await resolveAuthAnalyticsContext(context);
+  const newUsersToday = countAccountsCreatedSince(accounts, getUtcDayStart().getTime());
 
   const failedOrders1h = (db.prepare(
     "SELECT COUNT(*) AS c FROM orders WHERE status='failed' AND created_at >= datetime('now','-1 hour')"

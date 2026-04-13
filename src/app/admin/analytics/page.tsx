@@ -1,5 +1,6 @@
 ﻿import { requireAdminAuth } from "@/lib/server/admin-session";
 import {
+  getAuthAnalyticsContext,
   getVisitSummary,
   getDailySignups,
   getDailyPV,
@@ -270,29 +271,43 @@ export default async function AdminAnalyticsPage({
   const pathQuery = typeof sp.q === "string" ? sp.q.trim() : "";
 
   /* ── data ── */
-  const activity  = getActivityMetrics();
+  const authAnalyticsContext = await getAuthAnalyticsContext();
+  const [
+    activity,
+    signupFunnel,
+    cohort,
+    segments,
+    luna,
+    dailySignups,
+    periodCmp,
+    vipFunnel,
+  ] = await Promise.all([
+    getActivityMetrics(authAnalyticsContext),
+    getSignupFunnel(period, authAnalyticsContext),
+    getCohortRetention(authAnalyticsContext),
+    getUserSegments(authAnalyticsContext),
+    getLunaMetrics(authAnalyticsContext),
+    getDailySignups(tab === "ops" ? 30 : 90, authAnalyticsContext),
+    getRevenuePeriodComparison(period, authAnalyticsContext),
+    getVipConversionFunnel(period, authAnalyticsContext),
+  ]);
+
   const visitSum  = getVisitSummary(period);
-  const signupFunnel  = getSignupFunnel(period);
   const payFunnel    = getPaymentFunnel(period);
   const voidFunnel   = getVoidFunnel(period);
-  const cohort       = getCohortRetention();
   const paymentCohort = getFirstPaymentCohortRetention();
   const voidCohort    = getFirstVoidCohortRetention();
-  const segments     = getUserSegments();
-  const luna         = getLunaMetrics();
   const quality      = getQualityMetrics();
-  const dailySignups = getDailySignups(tab === "ops" ? 30 : 90);
   const dailyPV      = getDailyPV(30);
   const pageStats    = getPageStats(period);
   const friendStats  = getFriendEventStats();
-  const revMetrics   = getRevenueMetrics();
   const entStats     = getEntitlementStats();
-  const periodCmp    = getRevenuePeriodComparison(period);
   const recentIap    = getRecentIapEvents(15);
   const iapHealth    = getIapHealthSummary();
   const iapAudit     = getIapFlowAudit();
   const dwellStats   = getDwellTimeStats(period);
   const pathResults  = searchTrackedPaths(period, pathQuery, 12);
+  const revMetrics   = await getRevenueMetrics();
   const selectedPath = typeof sp.path === "string" && sp.path.length > 0
     ? sp.path
     : (pathResults[0]?.path ?? null);
@@ -301,7 +316,6 @@ export default async function AdminAnalyticsPage({
   const nextPaths = selectedPath ? getTopNextPaths(period, selectedPath, 3) : [];
   const landingConversions = getLandingPageConversions(period, 10);
   const exitPages = getTopExitPages(period, 10);
-  const vipFunnel    = getVipConversionFunnel(period);
 
   const maxSignup  = Math.max(...dailySignups.map((d) => d.value), 1);
   const totalUsers = luna.totalUsers;
