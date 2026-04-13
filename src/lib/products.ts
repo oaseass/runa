@@ -28,10 +28,12 @@ export type SubscriptionSkuId = typeof VIP_MONTHLY | typeof VIP_YEARLY;
 
 export const ANNUAL_REPORT  = "annual_report"  as const;
 export const AREA_READING   = "area_reading"   as const;
+export const VOID_SINGLE    = "void_single"    as const;
+export const VOID_PACK_5    = "void_pack_5"    as const;
 export const VOID_PACK_3    = "void_pack_3"    as const;
 export const VOID_PACK_10   = "void_pack_10"   as const;
 
-export type OnetimeSkuId = typeof ANNUAL_REPORT | typeof AREA_READING | typeof VOID_PACK_3 | typeof VOID_PACK_10;
+export type OnetimeSkuId = typeof ANNUAL_REPORT | typeof AREA_READING | typeof VOID_SINGLE | typeof VOID_PACK_5 | typeof VOID_PACK_3 | typeof VOID_PACK_10;
 
 export type SkuId = SubscriptionSkuId | OnetimeSkuId;
 
@@ -63,12 +65,15 @@ type OnetimeProduct = BaseProduct & {
 
 export type Product = SubscriptionProduct | OnetimeProduct;
 
+export const VIP_MONTHLY_VOID_CREDITS = 30;
+export const STARTER_VOID_CREDITS = 3;
+
 export const SKUS: Record<SkuId, Product> = {
   // ── Subscriptions ────────────────────────────────────────────────────────
   [VIP_MONTHLY]: {
     type: "subscription",
     name: "LUNA VIP 월간",
-    description: "모든 기능 무제한 · 매일 더 깊은 별자리 해석",
+    description: "깊이 보기 + VOID 월 30회 크레딧",
     amount: 9_900,
     period: "monthly",
     appleProductId: "com.luna.vip.monthly",
@@ -78,7 +83,7 @@ export const SKUS: Record<SkuId, Product> = {
   [VIP_YEARLY]: {
     type: "subscription",
     name: "LUNA VIP 연간",
-    description: "월 결제 대비 34% 할인 · 연간 리포트 포함",
+    description: "깊이 보기 + VOID 월 30회 크레딧 · 연간 결제",
     amount: 79_000,
     period: "yearly",
     monthlyEquivalent: 6_583,
@@ -92,7 +97,7 @@ export const SKUS: Record<SkuId, Product> = {
     type: "onetime",
     name: "2026 연간 리포트",
     description: "올해의 큰 흐름과 중요한 변화를 짚어드립니다",
-    amount: 14_900,
+    amount: 3_000,
     appleProductId: "com.luna.report.annual",
     googleProductId: "luna_annual_report",
   },
@@ -100,15 +105,33 @@ export const SKUS: Record<SkuId, Product> = {
     type: "onetime",
     name: "영역 보고서",
     description: "연애 · 직업 · 재물 중 한 영역을 깊이 읽습니다",
-    amount: 9_900,
+    amount: 3_000,
     appleProductId: "com.luna.report.area",
     googleProductId: "luna_area_reading",
+  },
+  [VOID_SINGLE]: {
+    type: "onetime",
+    name: "VOID 1회권",
+    description: "VOID 질문 1회 · 회당 ₩500",
+    amount: 500,
+    voidCredits: 1,
+    appleProductId: "com.luna.void.single",
+    googleProductId: "luna_void_single",
+  },
+  [VOID_PACK_5]: {
+    type: "onetime",
+    name: "VOID 5회권",
+    description: "VOID 질문 5회 · 40% 할인",
+    amount: 1_500,
+    voidCredits: 5,
+    appleProductId: "com.luna.void.pack5",
+    googleProductId: "luna_void_pack5",
   },
   [VOID_PACK_3]: {
     type: "onetime",
     name: "VOID 3회권",
-    description: "VOID 질문 3회 · 기간 제한 없음",
-    amount: 4_900,
+    description: "VOID 질문 3회 · 회당 ₩500",
+    amount: 1_500,
     voidCredits: 3,
     appleProductId: "com.luna.void.pack3",
     googleProductId: "luna_void_pack3",
@@ -116,8 +139,8 @@ export const SKUS: Record<SkuId, Product> = {
   [VOID_PACK_10]: {
     type: "onetime",
     name: "VOID 10회권",
-    description: "VOID 질문 10회 · 기간 제한 없음 · 회당 ₩1,490",
-    amount: 14_900,
+    description: "VOID 질문 10회 · 회당 ₩500",
+    amount: 5_000,
     voidCredits: 10,
     appleProductId: "com.luna.void.pack10",
     googleProductId: "luna_void_pack10",
@@ -163,8 +186,32 @@ export const LEGACY_TO_SKU: Partial<Record<string, SkuId>> = {
   membership: VIP_MONTHLY,
   yearly:     ANNUAL_REPORT,
   area:       AREA_READING,
-  question:   VOID_PACK_3,
+  question:   VOID_SINGLE,
 };
+
+export function resolveCheckoutSkuId(productId: string): SkuId | null {
+  if (isValidSkuId(productId)) {
+    return productId;
+  }
+
+  return LEGACY_TO_SKU[productId] ?? null;
+}
+
+export function isVipCheckoutProductId(productId: string): boolean {
+  return productId === "membership" || productId === VIP_MONTHLY || productId === VIP_YEARLY;
+}
+
+export function isAnnualReportProductId(productId: string): boolean {
+  return productId === "yearly" || productId === ANNUAL_REPORT;
+}
+
+export function isAreaReportProductId(productId: string): boolean {
+  return productId === "area" || productId === AREA_READING;
+}
+
+export function isVoidCreditPackProductId(productId: string): boolean {
+  return productId === "question" || productId === VOID_SINGLE || productId === VOID_PACK_5 || productId === VOID_PACK_3 || productId === VOID_PACK_10;
+}
 
 // ── Display helpers ───────────────────────────────────────────────────────────
 

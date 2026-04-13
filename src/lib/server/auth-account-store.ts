@@ -41,6 +41,11 @@ export type PublicAuthAccount = {
   createdAt: string;
 };
 
+export type PublicDirectoryAccount = {
+  id: string;
+  username: string;
+};
+
 export type AuthBirthDataPatch = {
   birthDate?: string | null;
   hour?: number | null;
@@ -137,6 +142,28 @@ async function getLocalStoredAuthAccount(whereClause: string, value: string) {
 
 async function getLocalStoredAuthAccountById(userId: string) {
   return getLocalStoredAuthAccount("u.id = ?", userId);
+}
+
+async function scanExternalAuthKeys(match: string) {
+  const redis = getExternalAuthStorage();
+  if (!redis) {
+    return [] as string[];
+  }
+
+  const keys: string[] = [];
+  let cursor = 0;
+
+  do {
+    const result = await redis.scan(cursor, { match, count: 1000 }) as
+      | [number | string, string[]]
+      | { cursor?: number | string; keys?: string[] };
+    const nextCursor = Array.isArray(result) ? Number(result[0]) : Number(result.cursor ?? 0);
+    const batch = Array.isArray(result) ? result[1] : (result.keys ?? []);
+    keys.push(...batch);
+    cursor = nextCursor;
+  } while (cursor !== 0);
+
+  return keys;
 }
 
 function hasBirthPatchValue(value: unknown) {
@@ -299,6 +326,198 @@ export async function findStoredAuthAccountByPhone(phoneNumber: string) {
   }
 
   return getLocalStoredAuthAccount("u.phone_number = ?", phoneNumber);
+}
+
+export async function listStoredAuthAccounts(limit?: number): Promise<StoredAuthAccount[]> {
+  const redis = getExternalAuthStorage();
+  if (redis) {
+    const keys = await scanExternalAuthKeys(`${authUserKey("")}*`);
+    const limitedKeys = typeof limit === "number" ? keys.slice(0, limit) : keys;
+    const accounts = await Promise.all(
+      limitedKeys.map((key) => redis.get<StoredAuthAccount>(key)),
+    );
+
+    return accounts
+      .filter((account): account is StoredAuthAccount => account !== null)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  }
+
+  const db = await getLocalDb();
+  const sql = `
+    SELECT
+      u.id,
+      u.username,
+      u.phone_number,
+      u.password_hash,
+      u.password_salt,
+      u.created_at,
+      o.birth_date,
+      o.birth_hour,
+      o.birth_minute,
+      o.birth_time_text,
+      o.birth_place_id,
+      o.birth_place_full_text,
+      o.birth_place_main_text,
+      o.birth_place_secondary_text,
+      o.birth_latitude,
+      o.birth_longitude,
+      o.birth_timezone
+    FROM users u
+    LEFT JOIN onboarding_profiles o ON o.user_id = u.id
+    ORDER BY u.created_at DESC${typeof limit === "number" ? " LIMIT ?" : ""}
+  `;
+  const rows = db.prepare(sql).all(typeof limit === "number" ? limit : []) as LocalAuthRow[];
+  return rows.map(mapLocalAuthRow);
+}
+
+export async function countStoredAuthAccounts(): Promise<number> {
+  const redis = getExternalAuthStorage();
+  if (redis) {
+    const keys = await scanExternalAuthKeys(`${authUserKey("")}*`);
+    return keys.length;
+  }
+
+  const db = await getLocalDb();
+  const row = db.prepare("SELECT COUNT(*) AS count FROM users").get() as { count: number } | undefined;
+  return row?.count ?? 0;
+}
+
+export async function listPublicAuthAccountsByIds(userIds: string[]): Promise<PublicAuthAccount[]> {
+  const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
+  if (uniqueIds.length === 0) {
+    return [];
+  }
+
+  const redis = getExternalAuthStorage();
+  if (redis) {
+    const accounts = await Promise.all(
+      uniqueIds.map(async (userId) => {
+        const account = await redis.get<StoredAuthAccount>(authUserKey(userId));
+        return account ? toPublicAuthAccount(account) : null;
+      }),
+    );
+
+    return accounts.filter((account): account is PublicAuthAccount => account !== null);
+  }
+
+  const db = await getLocalDb();
+  const placeholders = uniqueIds.map(() => "?").join(",");
+  const rows = db.prepare(
+    `
+    SELECT id, username, phone_number, created_at
+    FROM users
+    WHERE id IN (${placeholders})
+    `,
+  ).all(uniqueIds) as Array<{
+    id: string;
+    username: string;
+    phone_number: string;
+    created_at: string;
+  }>;
+
+  return rows.map((row) => ({
+    id: row.id,
+    username: row.username,
+    phoneNumber: row.phone_number,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function findPublicAuthAccountByPhone(
+  phoneNumber: string,
+  excludeUserId?: string,
+): Promise<PublicDirectoryAccount | null> {
+  const account = await findStoredAuthAccountByPhone(phoneNumber);
+  if (!account) {
+    return null;
+  }
+
+  if (excludeUserId && account.id === excludeUserId) {
+    return null;
+  }
+
+  return { id: account.id, username: account.username };
+}
+
+export async function searchPublicAuthAccountsByUsername(
+  query: string,
+  excludeUserId?: string,
+  limit = 20,
+): Promise<PublicDirectoryAccount[]> {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  const redis = getExternalAuthStorage();
+  if (redis) {
+    const keys = await scanExternalAuthKeys(`${authUserByUsernameKey(trimmed)}*`);
+    const ids = await Promise.all(keys.map((key) => redis.get<string>(key)));
+    const uniqueIds = Array.from(new Set(ids.filter((value): value is string => Boolean(value))));
+    const accounts = await listPublicAuthAccountsByIds(uniqueIds);
+
+    return accounts
+      .filter((account) => !excludeUserId || account.id !== excludeUserId)
+      .sort((left, right) => left.username.localeCompare(right.username, "ko"))
+      .slice(0, limit)
+      .map((account) => ({ id: account.id, username: account.username }));
+  }
+
+  const db = await getLocalDb();
+  const like = `${trimmed.replace(/%/g, "")}%`;
+  const rows = db.prepare(
+    `
+    SELECT id, username
+    FROM users
+    WHERE username LIKE ? ${excludeUserId ? "AND id != ?" : ""}
+    ORDER BY username ASC
+    LIMIT ?
+    `,
+  ).all(excludeUserId ? [like, excludeUserId, limit] : [like, limit]) as Array<{
+    id: string;
+    username: string;
+  }>;
+
+  return rows;
+}
+
+export async function findPublicAuthAccountsByPhones(
+  phones: string[],
+): Promise<Array<{ id: string; username: string; phoneNumber: string }>> {
+  const uniquePhones = Array.from(new Set(phones.filter(Boolean)));
+  if (uniquePhones.length === 0) {
+    return [];
+  }
+
+  const redis = getExternalAuthStorage();
+  if (redis) {
+    const userIds = await Promise.all(uniquePhones.map((phone) => redis.get<string>(authUserByPhoneKey(phone))));
+    const accounts = await listPublicAuthAccountsByIds(
+      userIds.filter((value): value is string => Boolean(value)),
+    );
+
+    return accounts.map((account) => ({
+      id: account.id,
+      username: account.username,
+      phoneNumber: account.phoneNumber,
+    }));
+  }
+
+  const db = await getLocalDb();
+  const placeholders = uniquePhones.map(() => "?").join(",");
+  const rows = db.prepare(
+    `
+    SELECT id, username, phone_number
+    FROM users
+    WHERE phone_number IN (${placeholders})
+    `,
+  ).all(uniquePhones) as Array<{ id: string; username: string; phone_number: string }>;
+
+  return rows.map((row) => ({
+    id: row.id,
+    username: row.username,
+    phoneNumber: row.phone_number,
+  }));
 }
 
 export async function updateStoredAuthPassword(userId: string, passwordHash: string, passwordSalt: string) {
