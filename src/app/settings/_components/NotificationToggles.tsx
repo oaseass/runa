@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useOptimistic, startTransition } from "react";
+import { syncNativePushRegistration } from "@/lib/native-push";
 import { updateNotificationAction } from "../_actions/settingsActions";
 import type { NotifActionState } from "../_actions/settingsActions";
 
@@ -47,12 +48,19 @@ export function NotificationToggles({ initialPrefs }: { initialPrefs: Prefs }) {
   );
 
   function submitToggle(next: Prefs) {
+    const isEnablingPush =
+      (!optimisticPrefs.notifyDailyReading && next.notifyDailyReading) ||
+      (!optimisticPrefs.notifyAnalysisDone && next.notifyAnalysisDone);
+
     startTransition(() => {
       setOptimisticPrefs(next);
       const fd = new FormData();
       fd.set("notifyDailyReading", next.notifyDailyReading ? "1" : "0");
       fd.set("notifyAnalysisDone", next.notifyAnalysisDone ? "1" : "0");
       action(fd);
+      if (isEnablingPush) {
+        void syncNativePushRegistration({ prompt: true });
+      }
     });
   }
 

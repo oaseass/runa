@@ -190,21 +190,21 @@ db.exec(`
   );
 `);
 
-// Migrate existing onboarding_profiles table — add new columns if missing
+// Migrate existing onboarding_profiles table ??add new columns if missing
 const migrateColumns = [
   "ALTER TABLE onboarding_profiles ADD COLUMN birth_date TEXT",
   "ALTER TABLE onboarding_profiles ADD COLUMN birth_latitude REAL",
   "ALTER TABLE onboarding_profiles ADD COLUMN birth_longitude REAL",
   "ALTER TABLE onboarding_profiles ADD COLUMN birth_timezone TEXT",
   "ALTER TABLE onboarding_profiles ADD COLUMN birth_utc_datetime TEXT",
-  // orders — report JSON storage (yearly / area products)
+  // orders ??report JSON storage (yearly / area products)
   "ALTER TABLE orders ADD COLUMN report_json TEXT",
 ];
 for (const sql of migrateColumns) {
   try { db.exec(sql); } catch { /* column already exists */ }
 }
 
-// ── Entitlement system (IAP / subscription state) ─────────────────────────
+// ?? Entitlement system (IAP / subscription state) ?????????????????????????
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS entitlements (
@@ -212,7 +212,7 @@ db.exec(`
     is_vip               INTEGER NOT NULL DEFAULT 0,
     vip_source           TEXT,           -- 'vip_monthly'|'vip_yearly'|'admin'
     vip_expires_at       TEXT,           -- ISO-8601; NULL = indefinite (admin grant)
-    vip_grace_until      TEXT,           -- billing grace period end (≤16 days after expiry)
+    vip_grace_until      TEXT,           -- billing grace period end (??6 days after expiry)
     annual_report_owned  INTEGER NOT NULL DEFAULT 0,
     area_reports_owned   INTEGER NOT NULL DEFAULT 0,
     void_credits         INTEGER NOT NULL DEFAULT 0,
@@ -240,6 +240,48 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_iap_receipts_user     ON iap_receipts(user_id);
   CREATE INDEX IF NOT EXISTS idx_iap_receipts_sku      ON iap_receipts(sku_id);
   CREATE INDEX IF NOT EXISTS idx_entitlements_vip      ON entitlements(is_vip);
+
+  CREATE TABLE IF NOT EXISTS push_devices (
+    id                     TEXT PRIMARY KEY,
+    user_id                TEXT NOT NULL,
+    platform               TEXT NOT NULL,
+    token                  TEXT NOT NULL UNIQUE,
+    timezone               TEXT,
+    locale                 TEXT,
+    permission_state       TEXT NOT NULL DEFAULT 'unknown',
+    notifications_enabled  INTEGER NOT NULL DEFAULT 1,
+    last_seen_at           TEXT,
+    last_registered_at     TEXT NOT NULL,
+    last_error             TEXT,
+    created_at             TEXT NOT NULL,
+    updated_at             TEXT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS push_delivery_log (
+    id                     TEXT PRIMARY KEY,
+    device_id              TEXT NOT NULL,
+    user_id                TEXT NOT NULL,
+    campaign               TEXT NOT NULL,
+    dedupe_key             TEXT NOT NULL,
+    title                  TEXT,
+    body                   TEXT,
+    deep_link              TEXT,
+    status                 TEXT NOT NULL,
+    response_code          INTEGER,
+    response_body          TEXT,
+    created_at             TEXT NOT NULL,
+    sent_at                TEXT,
+    FOREIGN KEY(device_id) REFERENCES push_devices(id) ON DELETE CASCADE,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(device_id, campaign, dedupe_key)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_push_devices_user             ON push_devices(user_id);
+  CREATE INDEX IF NOT EXISTS idx_push_devices_enabled          ON push_devices(notifications_enabled, permission_state);
+  CREATE INDEX IF NOT EXISTS idx_push_devices_timezone         ON push_devices(timezone);
+  CREATE INDEX IF NOT EXISTS idx_push_delivery_log_user        ON push_delivery_log(user_id);
+  CREATE INDEX IF NOT EXISTS idx_push_delivery_log_campaign    ON push_delivery_log(campaign, dedupe_key);
 `);
 
 export { db };

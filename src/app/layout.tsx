@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import NativePushBootstrap from "@/components/NativePushBootstrap";
 import SharePromptOverlay from "@/components/SharePromptOverlay";
 import TrackPageView from "@/components/TrackPageView";
 
@@ -40,6 +41,7 @@ export default function RootLayout({
     <html lang="ko" className={`${pretendard.variable} ${ibmPlexMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <TrackPageView />
+        <NativePushBootstrap />
         {children}
         <SharePromptOverlay />
       </body>
