@@ -4,22 +4,10 @@ import Link from "next/link";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
 import {
   getOrder,
-  markOrderPaid,
   markOrderFailed,
-  setOrderAnalysisId,
-  setOrderReportJson,
   PRODUCTS,
 } from "@/lib/server/order-store";
-import {
-  createVoidAnalysisRequest,
-  updateVoidAnalysisRequest,
-} from "@/lib/server/void-store";
-import { generateVoidAnalysis } from "@/lib/server/void-analysis";
-import { generateAreaReport } from "@/lib/server/area-report";
-import { generateYearlyReport } from "@/lib/server/yearly-report";
-import { grantFromSku, recordIapReceipt } from "@/lib/server/entitlement-store";
-import { LEGACY_TO_SKU, isValidSkuId } from "@/lib/products";
-import type { CategoryKey } from "@/app/void/types";
+import { finalizePaidOrder, getPaidOrderRedirectPath } from "@/lib/server/order-fulfillment";
 
 // ── TossPayments server-side confirm ─────────────────────────────────────────
 
@@ -173,16 +161,7 @@ export default async function PaymentSuccessPage({
 
   // Idempotency: already paid
   if (order.status === "paid") {
-    if (order.productId === "question" && order.analysisId) {
-      redirect(`/void/result/${order.analysisId}`);
-    }
-    if (order.productId === "area" || order.productId === "yearly") {
-      redirect(`/store/report/${orderId}`);
-    }
-    if (order.productId === "membership") {
-      redirect("/insight/today");
-    }
-    return <ReportSuccessScreen productId={order.productId} paidAt={order.paidAt} />;
+    redirect(getPaidOrderRedirectPath(order));
   }
 
   // Verify amount matches what we stored
@@ -209,118 +188,22 @@ export default async function PaymentSuccessPage({
     );
   }
 
-  // Mark order paid
-  markOrderPaid(orderId, paymentKey, confirmResult.data.type);
+  const finalized = await finalizePaidOrder({
+    orderId,
+    userId: claims.userId,
+    paymentKey,
+    paymentType: confirmResult.data.type,
+    purchaseDate: new Date(),
+    receiptPlatform: "toss",
+  });
 
-  // ── Update entitlements (new unified system) ──────────────────────────────
-  const legacySkuId = LEGACY_TO_SKU[order.productId];
-  const skuId = legacySkuId ?? (isValidSkuId(order.productId) ? order.productId : null);
-  if (skuId) {
-    grantFromSku(claims.userId, skuId, new Date(), undefined, { skipIfAlreadyGranted: false });
-    recordIapReceipt({
-      userId:        claims.userId,
-      platform:      "toss",
-      skuId,
-      transactionId: paymentKey,
-      status:        "valid",
-      purchaseDate:  new Date().toISOString(),
-    });
-  }
-
-  // Deliver product
-
-  // New SKU: VIP subscriptions
-  if (order.productId === "vip_monthly" || order.productId === "vip_yearly" || order.productId === "membership") {
-    redirect("/home");
-  }
-
-  // New SKU: annual report
-  if (order.productId === "annual_report") {
-    try {
-      const report = await generateYearlyReport(claims.userId);
-      if (report) setOrderReportJson(orderId, JSON.stringify(report));
-    } catch { /* best-effort */ }
-    redirect(`/store/report/${orderId}`);
-  }
-
-  // New SKU: area reading
-  if (order.productId === "area_reading") {
-    try {
-      const report = await generateAreaReport(claims.userId);
-      if (report) setOrderReportJson(orderId, JSON.stringify(report));
-    } catch { /* best-effort */ }
-    redirect(`/store/report/${orderId}`);
-  }
-
-  // New SKU: VOID packs — go to VOID after purchase
-  if (order.productId === "void_pack_3" || order.productId === "void_pack_10") {
-    redirect("/void");
-  }
-
-  if (order.productId === "question") {
-    const meta = order.metadata ?? {};
-    const category = (meta.category ?? "self") as CategoryKey;
-    const questionText = meta.questionText ?? "";
-    const questionType = (meta.questionType ?? "preset") as "preset" | "custom";
-    const chartHash = meta.chartHash ?? null;
-
-    const record = createVoidAnalysisRequest({
-      userId: claims.userId,
-      category,
-      questionText,
-      questionType,
-      chartHash,
-      initialStatus: "generating",
-    });
-
-    let finalStatus: "complete" | "chart_missing" | "failed" = "failed";
-    let analysisJson: string | undefined;
-
-    try {
-      const output = await generateVoidAnalysis(claims.userId, category, questionText);
-      if (output) {
-        analysisJson = JSON.stringify(output);
-        finalStatus = "complete";
-      } else {
-        finalStatus = "chart_missing";
-      }
-    } catch {
-      finalStatus = "failed";
-    }
-
-    updateVoidAnalysisRequest(record.id, { status: finalStatus, analysisJson });
-    setOrderAnalysisId(orderId, record.id);
-
-    redirect(`/void/result/${record.id}`);
-  }
-
-  // For yearly / area reports: generate report, store, redirect to result
-  if (order.productId === "area") {
-    try {
-      const report = await generateAreaReport(claims.userId);
-      if (report) {
-        setOrderReportJson(orderId, JSON.stringify(report));
-      }
-    } catch { /* best-effort */ }
-    redirect(`/store/report/${orderId}`);
-  }
-
-  if (order.productId === "yearly") {
-    try {
-      const report = await generateYearlyReport(claims.userId);
-      if (report) {
-        setOrderReportJson(orderId, JSON.stringify(report));
-      }
-    } catch { /* best-effort */ }
-    redirect(`/store/report/${orderId}`);
-  }
-
-  // Membership: redirect to daily reading
-  if (order.productId === "membership") {
-    redirect("/insight/today");
-  }
+  redirect(finalized.redirectTo);
 
   // Fallback for unknown products
-  const freshOrder = getOrder(orderId);
-  return <ReportSuccessScreen productId={order.productId} paidAt={freshOrder?.paidAt ?? null} />;
+  const fallbackOrderId = order?.id;
+  let freshOrder: ReturnType<typeof getOrder> = null;
+  if (typeof fallbackOrderId === "string") {
+    freshOrder = getOrder(fallbackOrderId as string);
+  }
+  return <ReportSuccessScreen productId={order?.productId ?? ""} paidAt={freshOrder?.paidAt ?? null} />;
 }
