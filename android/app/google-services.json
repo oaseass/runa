@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "140634229429",
+    "project_id": "lunastar-36642",
+    "storage_bucket": "lunastar-36642.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:140634229429:android:6a5130b872050922e88cfc",
+        "android_client_info": {
+          "package_name": "com.lunastar.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDs2gF8qRsU2Fxq039Uu5LEFJNO_702eg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
