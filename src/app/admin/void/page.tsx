@@ -29,9 +29,11 @@ export default async function AdminVoidPage({
   const statusFilter   = sp.status   ?? "";
   const categoryFilter = sp.category ?? "";
 
-  const allRequests = getAdminVoidRequests();
-  const stats       = getAdminStats();
-  const analysis    = getAdminVoidAnalysis();
+  const [allRequests, stats, analysis] = await Promise.all([
+    getAdminVoidRequests(),
+    getAdminStats(),
+    getAdminVoidAnalysis(),
+  ]);
 
   const filtered = allRequests.filter(
     (r) =>

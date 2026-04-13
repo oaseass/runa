@@ -37,7 +37,7 @@ export default async function AdminSystemPage() {
       import("@/lib/server/db"),
     ]);
 
-    stats = getAdminStats();
+    stats = await getAdminStats();
 
     const row = db.prepare("SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()").get() as
       | { size: number }

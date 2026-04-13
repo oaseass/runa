@@ -25,8 +25,10 @@ function fmtPhone(p: string) {
 
 export default async function AdminSubscriptionsPage() {
   await requireAdminAuth();
-  const subs  = getAdminSubscriptions();
-  const stats = getAdminStats();
+  const [subs, stats] = await Promise.all([
+    getAdminSubscriptions(),
+    getAdminStats(),
+  ]);
 
   const totalRevenue    = subs.reduce((sum, s) => sum + s.amount, 0);
   const yearlyCount     = subs.filter((s) => s.productId === "yearly").length;

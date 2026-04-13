@@ -59,7 +59,7 @@ export default async function AdminUsersPage({
   const vipFilter = (VALID_VIP.includes(sp.vip as VipFilter) ? sp.vip : "") as VipFilter;
   const sortBy    = sp.sort ?? "";
 
-  let users = getAdminUsersFiltered(search, vipFilter);
+  let users = await getAdminUsersFiltered(search, vipFilter);
   if (sortBy === "vip") {
     users = [...users].sort((a, b) => (b.isVip ? 1 : 0) - (a.isVip ? 1 : 0));
   }

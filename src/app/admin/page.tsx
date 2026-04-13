@@ -84,7 +84,7 @@ function Sparkline({ data, color = "#6366f1" }: { data: DailyPoint[]; color?: st
 
 export default async function AdminDashboard() {
   await requireAdminAuth();
-  const s = getAdminStats();
+  const s = await getAdminStats();
 
   const weekTrend  = calcTrend(s.orders.weekRevenue,  s.orders.lastWeekRevenue);
   const monthTrend = calcTrend(s.users.month,          s.users.prevMonth);

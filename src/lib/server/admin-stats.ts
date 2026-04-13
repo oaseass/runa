@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { listStoredAuthAccounts } from "./auth-account-store";
 
 export type DailyPoint = { date: string; value: number };
 
@@ -47,21 +48,51 @@ export type AdminStats = {
   };
 };
 
-export function getAdminStats(): AdminStats {
+export async function getAdminStats(): Promise<AdminStats> {
   /* ── Users ── */
-  const userTotal     = (db.prepare("SELECT COUNT(*) as c FROM users").get() as {c:number}).c;
-  const userToday     = (db.prepare("SELECT COUNT(*) as c FROM users WHERE created_at >= date('now')").get() as {c:number}).c;
-  const userYesterday = (db.prepare("SELECT COUNT(*) as c FROM users WHERE created_at >= date('now','-1 day') AND created_at < date('now')").get() as {c:number}).c;
-  const userWeek      = (db.prepare("SELECT COUNT(*) as c FROM users WHERE created_at >= date('now','-7 days')").get() as {c:number}).c;
-  const userPrevWeek  = (db.prepare("SELECT COUNT(*) as c FROM users WHERE created_at >= date('now','-14 days') AND created_at < date('now','-7 days')").get() as {c:number}).c;
-  const userMonth     = (db.prepare("SELECT COUNT(*) as c FROM users WHERE created_at >= date('now','-30 days')").get() as {c:number}).c;
-  const userPrevMonth = (db.prepare("SELECT COUNT(*) as c FROM users WHERE created_at >= date('now','-60 days') AND created_at < date('now','-30 days')").get() as {c:number}).c;
+  const accounts = await listStoredAuthAccounts();
+  const todayUtc = new Date();
+  const startOfTodayUtc = new Date(Date.UTC(
+    todayUtc.getUTCFullYear(),
+    todayUtc.getUTCMonth(),
+    todayUtc.getUTCDate(),
+  ));
+  const dayMs = 24 * 60 * 60 * 1000;
+  const startOfYesterdayUtc = new Date(startOfTodayUtc.getTime() - dayMs);
+  const startOfWeekUtc = new Date(startOfTodayUtc.getTime() - 7 * dayMs);
+  const startOfPrevWeekUtc = new Date(startOfTodayUtc.getTime() - 14 * dayMs);
+  const startOfMonthUtc = new Date(startOfTodayUtc.getTime() - 30 * dayMs);
+  const startOfPrevMonthUtc = new Date(startOfTodayUtc.getTime() - 60 * dayMs);
 
-  const dailySignupsRaw = db.prepare(
-    `SELECT date(created_at) as date, COUNT(*) as value
-     FROM users WHERE created_at >= date('now','-13 days')
-     GROUP BY date(created_at) ORDER BY date ASC`
-  ).all() as DailyPoint[];
+  const userTotal = accounts.length;
+  const userToday = accounts.filter((account) => new Date(account.createdAt) >= startOfTodayUtc).length;
+  const userYesterday = accounts.filter((account) => {
+    const createdAt = new Date(account.createdAt);
+    return createdAt >= startOfYesterdayUtc && createdAt < startOfTodayUtc;
+  }).length;
+  const userWeek = accounts.filter((account) => new Date(account.createdAt) >= startOfWeekUtc).length;
+  const userPrevWeek = accounts.filter((account) => {
+    const createdAt = new Date(account.createdAt);
+    return createdAt >= startOfPrevWeekUtc && createdAt < startOfWeekUtc;
+  }).length;
+  const userMonth = accounts.filter((account) => new Date(account.createdAt) >= startOfMonthUtc).length;
+  const userPrevMonth = accounts.filter((account) => {
+    const createdAt = new Date(account.createdAt);
+    return createdAt >= startOfPrevMonthUtc && createdAt < startOfMonthUtc;
+  }).length;
+
+  const signupCounts = new Map<string, number>();
+  for (const account of accounts) {
+    const createdAt = new Date(account.createdAt);
+    if (createdAt < new Date(startOfTodayUtc.getTime() - 13 * dayMs)) {
+      continue;
+    }
+    const date = account.createdAt.slice(0, 10);
+    signupCounts.set(date, (signupCounts.get(date) ?? 0) + 1);
+  }
+  const dailySignupsRaw = Array.from(signupCounts.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, value]) => ({ date, value }));
 
   /* ── Orders ── */
   const orderRow = db.prepare(
