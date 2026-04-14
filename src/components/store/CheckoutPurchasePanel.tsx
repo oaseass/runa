@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { purchaseWithNativeIap, getNativePlatform } from "@/lib/native-iap";
 import { TossPaymentWidget } from "@/components/TossPaymentWidget";
 import { NativePurchaseRestoreCard } from "@/components/store/NativePurchaseRestoreCard";
+import { devPurchaseAction } from "@/app/store/_actions/devPurchaseAction";
 
 type CheckoutPurchasePanelProps = {
   productId: string;
@@ -13,6 +14,7 @@ type CheckoutPurchasePanelProps = {
   customerKey: string;
   customerName?: string;
   clientKey: string | null;
+  allowTemporaryPurchaseBypass?: boolean;
 };
 
 type CreateOrderResponse = {
@@ -29,6 +31,7 @@ export function CheckoutPurchasePanel({
   customerKey,
   customerName,
   clientKey,
+  allowTemporaryPurchaseBypass = false,
 }: CheckoutPurchasePanelProps) {
   const [platform, setPlatform] = useState<"ios" | "android" | null>(null);
   const [ready, setReady] = useState(false);
@@ -127,6 +130,8 @@ export function CheckoutPurchasePanel({
     }
   }
 
+  const showTemporaryPurchaseBypass = allowTemporaryPurchaseBypass;
+
   if (!ready) {
     return (
       <div className="luna-settings-note" style={{ padding: "0.25rem 0" }}>
@@ -180,6 +185,19 @@ export function CheckoutPurchasePanel({
           앱 안에서는 웹 결제가 아니라 스토어 결제로 처리됩니다. 결제 완료 후 소유 상태와 화면을 즉시 동기화합니다.
         </p>
 
+        {showTemporaryPurchaseBypass && (
+          <form action={devPurchaseAction} style={{ marginTop: "0.9rem" }}>
+            <input type="hidden" name="productId" value={productId} />
+            <input type="hidden" name="existingOrderId" value={webOrderId ?? orderId ?? ""} />
+            <button type="submit" className="luna-settings-form-submit" style={{ width: "100%" }}>
+              임시 결제 완료 처리
+            </button>
+            <p className="luna-settings-note" style={{ marginTop: "0.55rem" }}>
+              결제 연동 전 테스트용 임시 버튼입니다. 누르면 실제 결제 없이 구매 완료 상태로 처리됩니다.
+            </p>
+          </form>
+        )}
+
         <NativePurchaseRestoreCard mode="inline" reloadOnSuccess />
       </div>
     );
@@ -192,6 +210,18 @@ export function CheckoutPurchasePanel({
         <p>
           NEXT_PUBLIC_TOSS_CLIENT_KEY 환경 변수에 토스페이먼츠 테스트 클라이언트 키를 입력해 주세요.
         </p>
+        {showTemporaryPurchaseBypass && (
+          <form action={devPurchaseAction} style={{ marginTop: "1rem" }}>
+            <input type="hidden" name="productId" value={productId} />
+            <input type="hidden" name="existingOrderId" value={webOrderId ?? orderId ?? ""} />
+            <button type="submit" className="luna-settings-form-submit" style={{ width: "100%" }}>
+              임시 결제 완료 처리
+            </button>
+            <p className="luna-settings-note" style={{ marginTop: "0.55rem" }}>
+              지금은 테스트용으로 실제 결제 없이 구매 완료 상태를 만듭니다.
+            </p>
+          </form>
+        )}
       </div>
     );
   }
@@ -226,6 +256,18 @@ export function CheckoutPurchasePanel({
       <p className="luna-settings-note" style={{ marginTop: "1rem" }}>
         결제는 토스페이먼츠가 안전하게 처리합니다. 테스트 모드에서는 실제 결제가 이루어지지 않습니다.
       </p>
+      {showTemporaryPurchaseBypass && (
+        <form action={devPurchaseAction} style={{ marginTop: "0.9rem" }}>
+          <input type="hidden" name="productId" value={productId} />
+          <input type="hidden" name="existingOrderId" value={webOrderId ?? orderId ?? ""} />
+          <button type="submit" className="luna-settings-form-submit" style={{ width: "100%" }}>
+            임시 결제 완료 처리
+          </button>
+          <p className="luna-settings-note" style={{ marginTop: "0.55rem" }}>
+            실제 결제 연동 전 상태 검증용 임시 버튼입니다.
+          </p>
+        </form>
+      )}
     </>
   );
 }

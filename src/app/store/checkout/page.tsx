@@ -92,6 +92,12 @@ export default async function StoreCheckoutPage({
 
   // Dev mode: Skip payment and go directly to success
   const skipPayment = process.env.SKIP_PAYMENT === "true" || process.env.NEXT_PUBLIC_SKIP_PAYMENT === "true";
+  const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? null;
+  const allowTemporaryPurchaseBypass =
+    skipPayment ||
+    !clientKey?.trim() ||
+    clientKey.startsWith("test_ck_placeholder");
+
   if (skipPayment) {
     let orderId = initialOrderId;
     if (!orderId) {
@@ -113,8 +119,6 @@ export default async function StoreCheckoutPage({
     // This will not be reached, but TypeScript needs it
     return null;
   }
-
-  const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? null;
 
   return (
     <main className="screen luna-article-screen">
@@ -158,6 +162,7 @@ export default async function StoreCheckoutPage({
             clientKey={clientKey}
             customerKey={claims.userId}
             customerName={claims.username}
+            allowTemporaryPurchaseBypass={allowTemporaryPurchaseBypass}
           />
         </section>
       </article>

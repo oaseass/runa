@@ -15,6 +15,7 @@ export const PRODUCTS = {
   vip_yearly:    { name: "LUNA VIP 연간",     amount: 79_000 },
   annual_report: { name: "2026 연간 리포트",  amount:  3_000 },
   area_reading:  { name: "영역 보고서",        amount:  3_000 },
+  void_single:   { name: "VOID 1회권",         amount:    500 },
   void_pack_5:   { name: "VOID 5회권",         amount:  1_500 },
   void_pack_3:   { name: "VOID 3회권",         amount:  1_500 },
   void_pack_10:  { name: "VOID 10회권",        amount:  5_000 },
