@@ -3,7 +3,6 @@ import {
   findStoredAuthAccountById,
   findStoredAuthAccountByPhone,
   findStoredAuthAccountByUsername,
-  toPublicAuthAccount,
   updateStoredAuthPassword,
 } from "@/lib/server/auth-account-store";
 import {
@@ -13,6 +12,7 @@ import {
   getExternalAuthStorage,
   type StoredAuthAccount,
 } from "@/lib/server/auth-storage";
+import { grantStarterVoidCredits } from "@/lib/server/entitlement-store";
 
 type AccountDraft = {
   id: string;
@@ -118,7 +118,9 @@ export async function createAccountDraft(input: {
 
     try {
       await redis.set(authUserKey(draftId), draft);
+      grantStarterVoidCredits(draftId);
     } catch (error) {
+      await redis.del(authUserKey(draftId));
       await redis.del(authUserByUsernameKey(input.username));
       await redis.del(authUserByPhoneKey(input.phoneNumber));
       throw error;
@@ -220,6 +222,8 @@ export async function createAccountDraft(input: {
       birthTimezone: birthPlace?.timezone ?? null,
       updatedAt: now,
     });
+
+    grantStarterVoidCredits(draft.id);
   });
 
   tx();

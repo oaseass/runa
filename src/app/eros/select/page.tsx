@@ -19,12 +19,12 @@ export default async function ErosSelectPage() {
 
   if (claims) {
     // LUNA eros partners added via contact discovery
-    erosFriends = listFriends(claims.userId, "eros").map((f) => ({
+    erosFriends = (await listFriends(claims.userId, "eros")).map((f) => ({
       id: f.userId,
       username: f.username,
     }));
 
-    const rows = listConnections(claims.userId);
+    const rows = await listConnections(claims.userId);
     friends = rows.map((row) => {
       let sunSign = "—";
       let moonSign = "—";

@@ -15,10 +15,11 @@
  */
 
 import { NextResponse } from "next/server";
-import { grantVip, renewVip, revokeVip, setVipGrace, recordIapReceipt } from "@/lib/server/entitlement-store";
+import { grantVip, renewVip, setVipGrace, recordIapReceipt } from "@/lib/server/entitlement-store";
 import { db } from "@/lib/server/db";
 import { VIP_MONTHLY, VIP_YEARLY } from "@/lib/products";
 import type { SubscriptionSkuId } from "@/lib/products";
+import { applyLocalRefund, deactivateSubscriptionAccess } from "@/lib/server/refund-service";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -66,7 +67,7 @@ const SUB_NOTIFY = {
   EXPIRED:         13,
 } as const;
 
-const GOOGLE_PACKAGE = process.env.GOOGLE_PACKAGE_NAME ?? "com.luna.app";
+const GOOGLE_PACKAGE = process.env.GOOGLE_PACKAGE_NAME ?? "com.lunastar.app";
 
 // ── Helper: get userId from purchase token in iap_receipts ────────────────────
 
@@ -189,20 +190,51 @@ export async function POST(request: Request) {
       setVipGrace(userId, graceUntil);
       break;
     }
+    case SUB_NOTIFY.CANCELED: {
+      // Auto-renew가 꺼진 상태일 수 있으므로 즉시 권한을 회수하지 않는다.
+      recordIapReceipt({
+        userId,
+        platform: "google",
+        skuId,
+        transactionId: `${purchaseToken}_cancelled_${Date.now()}`,
+        purchaseToken,
+        status: "cancelled",
+      });
+      break;
+    }
     case SUB_NOTIFY.ON_HOLD:
-    case SUB_NOTIFY.CANCELED:
+      deactivateSubscriptionAccess({
+        userId,
+        skuId,
+        platform: "google",
+        status: "cancelled",
+        reason: "Google 결제 보류",
+        purchaseToken,
+        rawResponse: JSON.stringify(payload),
+      });
+      break;
     case SUB_NOTIFY.REVOKED:
+      applyLocalRefund({
+        userId,
+        skuId,
+        source: "google",
+        reason: "Google Play 구독 환불",
+        externalRef: purchaseToken,
+        purchaseToken,
+        receiptPlatform: "google",
+        rawResponse: JSON.stringify(payload),
+      });
+      break;
     case SUB_NOTIFY.EXPIRED: {
-      // Revoke VIP. Note: one-time purchase credits (void_credits, annual_report_owned,
-      // area_reports_owned) are NOT revoked here.
-      //   - Consumed void credits cannot be un-consumed (by design for consumables).
-      //   - Un-spent void credits from a *refunded* void pack are also not removed;
-      //     the app stores handle the financial refund; we don't claw back credits
-      //     because this webhook only fires for subscription events.
-      //   - To handle one-time refunds, implement the voided_purchases polling endpoint
-      //     separately (GET androidpublisher/v3/applications/{pkg}/purchases/voidedpurchases).
-      revokeVip(userId);
-      recordIapReceipt({ userId, platform: "google", skuId, transactionId: `${purchaseToken}_revoke_${notificationType}`, purchaseToken, status: notificationType === SUB_NOTIFY.REVOKED ? "refunded" : "expired" });
+      deactivateSubscriptionAccess({
+        userId,
+        skuId,
+        platform: "google",
+        status: "expired",
+        reason: "Google 구독 만료",
+        purchaseToken,
+        rawResponse: JSON.stringify(payload),
+      });
       break;
     }
     default:

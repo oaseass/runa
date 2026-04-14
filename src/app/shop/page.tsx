@@ -3,7 +3,7 @@ import BottomNav from "@/components/BottomNav";
 import { cookies } from "next/headers";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
 import { checkVip, getEntitlement } from "@/lib/server/entitlement-store";
-import { SKUS, formatAmount, VIP_MONTHLY, VIP_YEARLY, ANNUAL_REPORT, AREA_READING, VOID_PACK_3, VOID_PACK_10 } from "@/lib/products";
+import { SKUS, formatAmount, VIP_MONTHLY, VIP_YEARLY, ANNUAL_REPORT, AREA_READING } from "@/lib/products";
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ export default async function ShopPage() {
             <div style={{ padding: "1rem", background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <p style={{ margin: 0, fontSize: "0.82rem", color: "#c4b5fd", fontWeight: 600 }}>✦ VIP 구독 중</p>
-                <p style={{ margin: "0.2rem 0 0", fontSize: "0.72rem", color: "#6b7280" }}>모든 기능 무제한 이용 가능</p>
+                <p style={{ margin: "0.2rem 0 0", fontSize: "0.72rem", color: "#6b7280" }}>깊이 보기 이용 가능 · VOID 월 30회 크레딧</p>
               </div>
               <Link href="/settings" style={{ fontSize: "0.72rem", color: "#7c3aed", textDecoration: "none" }}>
                 구독 관리 →
@@ -123,26 +123,14 @@ export default async function ShopPage() {
             </div>
           )}
 
-          <div style={{ display: "flex", gap: "0.6rem" }}>
-            {([VOID_PACK_3, VOID_PACK_10] as const).map((id) => {
-              const sku = SKUS[id];
-              const credits = (sku as typeof sku & { voidCredits?: number }).voidCredits ?? 0;
-              const isBest  = id === VOID_PACK_10;
-              return (
-                <Link key={id} href={`/store/checkout?product=${id}`} className="lsp-feature-block" style={{ flex: 1, position: "relative" }}>
-                  {isBest && (
-                    <span style={{ position: "absolute", top: -8, right: 8, background: "#374151", color: "#9ca3af", fontSize: "0.58rem", fontWeight: 700, padding: "0.12rem 0.4rem", borderRadius: 99 }}>BEST</span>
-                  )}
-                  <div className="lsp-feature-body">
-                    <span className="lsp-feature-title">VOID {credits}회권</span>
-                    <span className="lsp-feature-desc">기간 제한 없음</span>
-                    <span className="lsp-feature-price">{formatAmount(sku.amount)}</span>
-                  </div>
-                  <span className="lsp-feature-arrow" aria-hidden="true">›</span>
-                </Link>
-              );
-            })}
-          </div>
+          <Link href="/store/checkout?product=question" className="lsp-feature-block">
+            <div className="lsp-feature-body">
+              <span className="lsp-feature-title">VOID 1회권</span>
+              <span className="lsp-feature-desc">질문 1회 · 회당 ₩500</span>
+              <span className="lsp-feature-price">{formatAmount(500)}</span>
+            </div>
+            <span className="lsp-feature-arrow" aria-hidden="true">›</span>
+          </Link>
         </section>
 
         {/* ── FREE FOR YOU ── */}

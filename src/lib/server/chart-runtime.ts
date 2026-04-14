@@ -45,6 +45,25 @@ type RuntimeBirthProfile = {
 
 export type RuntimeOnboardingProfile = RuntimeBirthProfile;
 
+type LocalOnboardingProfileRow = {
+  birth_date: string | null;
+  birth_hour: number | null;
+  birth_minute: number | null;
+  birth_place_full_text: string | null;
+  birth_latitude: number | null;
+  birth_longitude: number | null;
+  birth_timezone: string | null;
+};
+
+async function getLocalDb() {
+  try {
+    const { db } = await import("@/lib/server/db");
+    return db;
+  } catch {
+    return null;
+  }
+}
+
 function mapStoredOnboardingProfile(profile: StoredOnboardingProfile | null | undefined): RuntimeBirthProfile | null {
   if (!profile) {
     return null;
@@ -61,6 +80,60 @@ function mapStoredOnboardingProfile(profile: StoredOnboardingProfile | null | un
   };
 }
 
+function mergeRuntimeProfiles(
+  primary: RuntimeOnboardingProfile | null,
+  fallback: RuntimeOnboardingProfile | null,
+): RuntimeOnboardingProfile | null {
+  if (!primary && !fallback) {
+    return null;
+  }
+
+  const merged: RuntimeOnboardingProfile = {
+    birthDate: primary?.birthDate ?? fallback?.birthDate ?? null,
+    birthHour: primary?.birthHour ?? fallback?.birthHour ?? null,
+    birthMinute: primary?.birthMinute ?? fallback?.birthMinute ?? null,
+    birthPlaceFullText: primary?.birthPlaceFullText ?? fallback?.birthPlaceFullText ?? null,
+    birthLatitude: primary?.birthLatitude ?? fallback?.birthLatitude ?? null,
+    birthLongitude: primary?.birthLongitude ?? fallback?.birthLongitude ?? null,
+    birthTimezone: primary?.birthTimezone ?? fallback?.birthTimezone ?? null,
+  };
+
+  if (
+    merged.birthDate === null &&
+    merged.birthHour === null &&
+    merged.birthMinute === null &&
+    merged.birthPlaceFullText === null &&
+    merged.birthLatitude === null &&
+    merged.birthLongitude === null &&
+    merged.birthTimezone === null
+  ) {
+    return null;
+  }
+
+  return merged;
+}
+
+function isCompleteRuntimeProfile(
+  profile: RuntimeBirthProfile | null,
+): profile is RuntimeBirthProfile & {
+  birthDate: string;
+  birthHour: number;
+  birthMinute: number;
+  birthLatitude: number;
+  birthLongitude: number;
+  birthTimezone: string;
+} {
+  return Boolean(
+    profile &&
+    profile.birthDate &&
+    profile.birthHour != null &&
+    profile.birthMinute != null &&
+    profile.birthLatitude != null &&
+    profile.birthLongitude != null &&
+    profile.birthTimezone,
+  );
+}
+
 function computeChartHash(birthUtc: Date, latitude: number, longitude: number) {
   return crypto
     .createHash("sha256")
@@ -69,16 +142,101 @@ function computeChartHash(birthUtc: Date, latitude: number, longitude: number) {
     .slice(0, 16);
 }
 
-function computeRuntimeNatalChart(profile: RuntimeBirthProfile | null): NatalChart | null {
-  if (
-    !profile ||
-    !profile.birthDate ||
-    profile.birthHour == null ||
-    profile.birthMinute == null ||
-    profile.birthLatitude == null ||
-    profile.birthLongitude == null ||
-    !profile.birthTimezone
-  ) {
+async function getCachedLocalNatalChart(userId: string): Promise<NatalChart | null> {
+  const db = await getLocalDb();
+  if (!db) {
+    return null;
+  }
+
+  const row = db.prepare(
+    "SELECT chart_json, calc_version FROM natal_charts WHERE user_id = ?",
+  ).get(userId) as { chart_json: string; calc_version: string } | undefined;
+
+  if (!row || row.calc_version !== CALC_VERSION) {
+    return null;
+  }
+
+  try {
+    const chart = JSON.parse(row.chart_json) as NatalChart;
+    if (!chart.chartHash) {
+      return null;
+    }
+
+    return chart;
+  } catch {
+    return null;
+  }
+}
+
+async function saveLocalNatalChart(userId: string, chart: NatalChart): Promise<void> {
+  const db = await getLocalDb();
+  if (!db) {
+    return;
+  }
+
+  db.prepare(`
+    INSERT INTO natal_charts (id, user_id, calc_version, chart_json, computed_at)
+    VALUES (@id, @userId, @version, @json, @computedAt)
+    ON CONFLICT(user_id) DO UPDATE SET
+      calc_version = excluded.calc_version,
+      chart_json   = excluded.chart_json,
+      computed_at  = excluded.computed_at
+  `).run({
+    id: crypto.randomUUID(),
+    userId,
+    version: chart.version,
+    json: JSON.stringify(chart),
+    computedAt: chart.computedAt,
+  });
+}
+
+async function getRuntimeStoredAccount(userId: string) {
+  try {
+    return await findStoredAuthAccountById(userId);
+  } catch {
+    return null;
+  }
+}
+
+async function getLocalOnboardingProfile(userId: string): Promise<RuntimeOnboardingProfile | null> {
+  const db = await getLocalDb();
+  if (!db) {
+    return null;
+  }
+
+  const row = db.prepare(`
+    SELECT birth_date, birth_hour, birth_minute,
+           birth_place_full_text, birth_latitude, birth_longitude, birth_timezone
+    FROM onboarding_profiles WHERE user_id = ?
+  `).get(userId) as LocalOnboardingProfileRow | undefined;
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    birthDate: row.birth_date,
+    birthHour: row.birth_hour,
+    birthMinute: row.birth_minute,
+    birthPlaceFullText: row.birth_place_full_text,
+    birthLatitude: row.birth_latitude,
+    birthLongitude: row.birth_longitude,
+    birthTimezone: row.birth_timezone,
+  };
+}
+
+export async function getOnboardingProfileForUser(userId: string): Promise<RuntimeOnboardingProfile | null> {
+  const account = await getRuntimeStoredAccount(userId);
+  const runtimeProfile = mapStoredOnboardingProfile(account?.onboardingProfile);
+  const localProfile = await getLocalOnboardingProfile(userId);
+  return mergeRuntimeProfiles(runtimeProfile, localProfile);
+}
+
+async function getOrComputeRuntimeNatalChart(
+  userId: string,
+  profile: RuntimeBirthProfile | null,
+): Promise<NatalChart | null> {
+  if (!isCompleteRuntimeProfile(profile)) {
     return null;
   }
 
@@ -91,6 +249,11 @@ function computeRuntimeNatalChart(profile: RuntimeBirthProfile | null): NatalCha
     profile.birthMinute,
     profile.birthTimezone,
   );
+  const chartHash = computeChartHash(birthUtc, profile.birthLatitude, profile.birthLongitude);
+  const cachedChart = await getCachedLocalNatalChart(userId);
+  if (cachedChart?.chartHash === chartHash) {
+    return cachedChart;
+  }
 
   const chart = computeNatalChart({
     birthUtc,
@@ -98,42 +261,9 @@ function computeRuntimeNatalChart(profile: RuntimeBirthProfile | null): NatalCha
     longitude: profile.birthLongitude,
     timezone: profile.birthTimezone,
   });
-
-  chart.chartHash = computeChartHash(birthUtc, profile.birthLatitude, profile.birthLongitude);
+  chart.chartHash = chartHash;
+  await saveLocalNatalChart(userId, chart);
   return chart;
-}
-
-async function getRuntimeStoredAccount(userId: string) {
-  try {
-    return await findStoredAuthAccountById(userId);
-  } catch {
-    return null;
-  }
-}
-
-async function getRedisNatalChart(userId: string) {
-  const account = await getRuntimeStoredAccount(userId);
-  return computeRuntimeNatalChart(mapStoredOnboardingProfile(account?.onboardingProfile));
-}
-
-async function getLocalOnboardingProfile(userId: string): Promise<RuntimeOnboardingProfile | null> {
-  try {
-    const { getOnboardingProfile } = await import("@/lib/server/chart-store");
-    return getOnboardingProfile(userId);
-  } catch {
-    return null;
-  }
-}
-
-export async function getOnboardingProfileForUser(userId: string): Promise<RuntimeOnboardingProfile | null> {
-  const account = await getRuntimeStoredAccount(userId);
-  const runtimeProfile = mapStoredOnboardingProfile(account?.onboardingProfile);
-
-  if (runtimeProfile) {
-    return runtimeProfile;
-  }
-
-  return getLocalOnboardingProfile(userId);
 }
 
 export async function getBirthProfileStatusForUser(userId: string): Promise<BirthProfileStatus> {
@@ -155,17 +285,8 @@ export async function getBirthProfileStatusForUser(userId: string): Promise<Birt
 }
 
 export async function getNatalChartForUser(userId: string): Promise<NatalChart | null> {
-  const redisChart = await getRedisNatalChart(userId);
-  if (redisChart) {
-    return redisChart;
-  }
-
-  try {
-    const { getOrComputeNatalChart } = await import("@/lib/server/chart-store");
-    return getOrComputeNatalChart(userId);
-  } catch {
-    return null;
-  }
+  const profile = await getOnboardingProfileForUser(userId);
+  return getOrComputeRuntimeNatalChart(userId, profile);
 }
 
 export async function getNatalInterpretationForUser(userId: string): Promise<NatalInterpretation | null> {

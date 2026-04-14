@@ -87,6 +87,9 @@ export default function HomePage() {
 
   const firstBestDay = bestDays[0] ?? null;
   const restBestDays = bestDays.slice(1);
+  const todayDeepHref = isPro === false
+    ? "/store/checkout?product=membership"
+    : `/home/detail/today${isToday ? "" : `?date=${dateParam}`}`;
 
   const moonSign = interp?.transitMoonSign ?? null;
   // Use natal-aware DO/DON'T computed server-side from active transits.
@@ -306,7 +309,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <Link href={`/home/detail/today${isToday ? "" : `?date=${dateParam}`}`} className="cs-dive-btn">
+          <Link href={todayDeepHref} className="cs-dive-btn">
             깊이 보기 →
           </Link>
         </section>
@@ -330,7 +333,7 @@ export default function HomePage() {
               // Leading transit reason (e.g. "금성 합 출생 달 (1.2°)") shown as a signal chip
               const signalReason = dr?.reasons?.[0] ?? null;
               return (
-                <Link key={t.key} href={`/home/detail/${t.key.toLowerCase()}${isToday ? "" : `?date=${dateParam}`}`}
+                <Link key={t.key} href={isPro === false ? "/store/checkout?product=membership" : `/home/detail/${t.key.toLowerCase()}${isToday ? "" : `?date=${dateParam}`}`}
                   className={isActive ? "cs-domain-row cs-domain-row--active" : "cs-domain-row"}>
                   <div className="cs-domain-row-head">
                     <span className={isActive ? "cs-bullet cs-bullet--on" : "cs-bullet"} />

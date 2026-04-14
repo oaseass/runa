@@ -3,11 +3,14 @@
 실기기 샌드박스 결제는 로컬 환경으로 대체할 수 없다.
 이 문서는 iPhone / Android 실기기에서 스토어 결제를 수행한 뒤, 결제 이벤트가 entitlement와 사용자 화면, 관리자 ops 탭까지 한 번에 이어지는지 남기는 운영 QA 기록이다.
 
+네이티브 브리지 구현 기준은 [docs/android-native-iap-bridge.md](docs/android-native-iap-bridge.md)를 따른다.
+
 ## 검증 근거
 
 지금 확인해야 하는 축은 아래로 고정한다.
 
 - 결제 이벤트: Apple / Google 샌드박스 구매 이벤트 수신, 최근 IAP 이벤트 로그 반영
+- 브리지 이벤트: native_iap_purchase_started / native_iap_purchase_verified / native_iap_purchase_failed / native_iap_restore_completed
 - 권한/상태 반영: /api/user/status, Shop CTA, VIP 배지, VOID 크레딧, /me
 - 운영 검수: ops 탭 IAP QA 체크리스트, mismatch 0, pending 0, entitlement 연결 정상
 
@@ -161,6 +164,7 @@
 ## ops 탭 확인 포인트
 
 - recent events
+- native_iap_* 이벤트와 실제 결제 결과가 같은 타임라인으로 남는지
 - mismatch 0
 - pending 0
 - entitlement 연결 정상

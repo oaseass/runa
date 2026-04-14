@@ -1,37 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LUNA
 
-## Getting Started
+LUNA는 Next.js 웹앱과 Android Capacitor 셸을 함께 운용한다.
 
-First, run the development server:
+## 웹 앱
+
+개발 서버:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+프로덕션 빌드:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Android 셸
 
-## Learn More
+Android 셸은 `https://runa.co.kr` 를 원격 WebView로 여는 구조다.
 
-To learn more about Next.js, take a look at the following resources:
+- Capacitor 설정: capacitor.config.json
+- Android 프로젝트: android/
+- Google Play 브리지: android/app/src/main/java/com/luna/app/iap/LunaIapPlugin.java
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+초기 준비 및 동기화:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm install
+npm run cap:sync
+```
 
-## Deploy on Vercel
+디버그 빌드:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+cd android
+gradlew.bat assembleDebug
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# runa
+Google Play용 AAB 빌드:
+
+```bash
+npm run android:play:bundle
+```
+
+버전까지 올린 뒤 Google Play용 AAB 준비:
+
+```bash
+npm run android:play:prepare
+```
+
+자동 업데이트 배포:
+
+```bash
+npm run deploy:prod:android
+```
+
+참고:
+
+- `scripts/patch-capacitor-java.cjs` 가 Capacitor Gradle 파일을 Java 17 기준으로 보정한다.
+- 디버그 APK 출력은 `android/app/build/outputs/apk/debug/app-debug.apk`.
+- Play Store 업로드용 AAB 출력은 `android/app/build/outputs/bundle/release/app-release.aab`.
+- `src/config/android-update.json` 이 웹 업데이트 안내와 Android `versionCode` / `versionName` 의 공통 기준이다.
+- `npm run deploy:prod:android` 는 버전을 올리고 APK를 `public/downloads/luna-android-latest.apk` 로 게시한 뒤 웹까지 프로덕션 배포한다.
+- Play Store 릴리스 서명과 등록 절차는 [docs/google-play-release.md](docs/google-play-release.md) 를 따른다.
+- 결제 브리지 계약과 QA 기준은 [docs/android-native-iap-bridge.md](docs/android-native-iap-bridge.md), [docs/admin-iap-sandbox-qa-log.md](docs/admin-iap-sandbox-qa-log.md) 를 따른다.
+

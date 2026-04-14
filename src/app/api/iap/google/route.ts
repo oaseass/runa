@@ -15,6 +15,7 @@ import { verifySessionToken } from "@/lib/server/auth-session";
 import { recordIapReceipt, grantFromSku, isTransactionProcessed, getEntitlement } from "@/lib/server/entitlement-store";
 import { isValidSkuId } from "@/lib/products";
 import type { SkuId } from "@/lib/products";
+import { assertOrderMatchesSku, finalizePaidOrder, getSkuRedirectPath, OrderFulfillmentError } from "@/lib/server/order-fulfillment";
 
 // ── Google Product ID → SkuId map ────────────────────────────────────────────
 
@@ -22,6 +23,8 @@ const GOOGLE_TO_SKU: Record<string, SkuId> = {
   luna_vip:           "vip_monthly",   // resolved via basePlanId below
   luna_annual_report: "annual_report",
   luna_area_reading:  "area_reading",
+  luna_void_single:   "void_single",
+  luna_void_pack5:    "void_pack_5",
   luna_void_pack3:    "void_pack_3",
   luna_void_pack10:   "void_pack_10",
 };
@@ -31,7 +34,11 @@ const GOOGLE_BASE_PLAN_TO_SKU: Record<string, SkuId> = {
   yearly:  "vip_yearly",
 };
 
-const PACKAGE_NAME = process.env.GOOGLE_PACKAGE_NAME ?? "com.luna.app";
+const PACKAGE_NAME = process.env.GOOGLE_PACKAGE_NAME ?? "com.lunastar.app";
+
+function isVoidConsumableSku(skuId: SkuId) {
+  return skuId === "void_single" || skuId === "void_pack_5" || skuId === "void_pack_3" || skuId === "void_pack_10";
+}
 
 // ── Build Google access token from service account ────────────────────────────
 
@@ -96,6 +103,7 @@ async function verifyGoogleSubscription(
     if (!resp.ok) return { valid: false };
     const data = await resp.json() as {
       subscriptionState?: string;
+      acknowledgementState?: string;
       orderId?: string;
       lineItems?: Array<{ productId?: string; offerDetails?: { basePlanId?: string }; expiryTime?: string }>;
     };
@@ -119,6 +127,7 @@ async function verifyGoogleSubscription(
       orderId:     data.orderId ?? purchaseToken.slice(0, 32),
       expiresDate: expiresStr,
       basePlanId,
+      acknowledgementState: data.acknowledgementState ?? null,
     };
   } catch {
     return { valid: false };
@@ -144,7 +153,7 @@ async function verifyGoogleOnetime(
       cache: "no-store",
     });
     if (!resp.ok) return { valid: false };
-    const data = await resp.json() as { purchaseState?: number; orderId?: string };
+    const data = await resp.json() as { purchaseState?: number; orderId?: string; acknowledgementState?: number; consumptionState?: number };
     // purchaseState 0 = purchased
     if (data.purchaseState !== 0) return { valid: false };
 
@@ -152,10 +161,73 @@ async function verifyGoogleOnetime(
       valid:   true,
       skuId:   GOOGLE_TO_SKU[productId] ?? null,
       orderId: data.orderId ?? purchaseToken.slice(0, 32),
+      acknowledgementState: data.acknowledgementState ?? 0,
+      consumptionState: data.consumptionState ?? 0,
     };
   } catch {
     return { valid: false };
   }
+}
+
+async function postGooglePublisherAction(url: string) {
+  const token = await getGoogleAccessToken();
+  if (!token) {
+    return true;
+  }
+
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+      cache: "no-store",
+    });
+
+    return resp.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function finalizeGoogleStorePurchase(options: {
+  productId: string;
+  purchaseToken: string;
+  packageName: string;
+  skuId: SkuId;
+  isSubscription: boolean;
+  acknowledgementState?: string | number | null;
+  consumptionState?: number | null;
+}) {
+  if (options.isSubscription) {
+    if (options.acknowledgementState === "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED") {
+      return true;
+    }
+
+    return postGooglePublisherAction(
+      `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${options.packageName}/purchases/subscriptions/${options.productId}/tokens/${options.purchaseToken}:acknowledge`,
+    );
+  }
+
+  if (isVoidConsumableSku(options.skuId)) {
+    if ((options.consumptionState ?? 0) === 1) {
+      return true;
+    }
+
+    return postGooglePublisherAction(
+      `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${options.packageName}/purchases/products/${options.productId}/tokens/${options.purchaseToken}:consume`,
+    );
+  }
+
+  if ((options.acknowledgementState ?? 0) === 1) {
+    return true;
+  }
+
+  return postGooglePublisherAction(
+    `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${options.packageName}/purchases/products/${options.productId}/tokens/${options.purchaseToken}:acknowledge`,
+  );
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -166,7 +238,7 @@ export async function POST(request: Request) {
   const claims = token ? verifySessionToken(token) : null;
   if (!claims) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  let body: { productId?: string; purchaseToken?: string; packageName?: string; isSubscription?: boolean };
+  let body: { productId?: string; purchaseToken?: string; packageName?: string; isSubscription?: boolean; orderId?: string };
   try { body = await request.json(); } catch {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
@@ -192,16 +264,65 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unknown_sku", skuId }, { status: 422 });
   }
 
+  const storeFinalized = await finalizeGoogleStorePurchase({
+    productId,
+    purchaseToken,
+    packageName: pkg,
+    skuId,
+    isSubscription,
+    acknowledgementState: "acknowledgementState" in result ? result.acknowledgementState : null,
+    consumptionState: "consumptionState" in result ? result.consumptionState : null,
+  });
+
+  if (!storeFinalized) {
+    return NextResponse.json({ error: "google_finalize_failed" }, { status: 502 });
+  }
+
+  if (body.orderId) {
+    try {
+      assertOrderMatchesSku(body.orderId, claims.userId, skuId);
+    } catch (error) {
+      const code = error instanceof OrderFulfillmentError ? error.code : "ORDER_VALIDATION_FAILED";
+      return NextResponse.json({ error: code }, { status: 422 });
+    }
+  }
+
   // Idempotency
   const transactionId = "orderId" in result ? (result.orderId ?? purchaseToken) : purchaseToken;
+  let redirectTo: string | undefined = getSkuRedirectPath(skuId);
+
   if (isTransactionProcessed("google", transactionId)) {
-    return NextResponse.json({ ok: true, skuId, alreadyProcessed: true, entitlement: getEntitlement(claims.userId) });
+    if (body.orderId) {
+      try {
+        const finalized = await finalizePaidOrder({
+          orderId: body.orderId,
+          userId: claims.userId,
+          paymentKey: transactionId,
+          paymentType: "GOOGLE_IAP",
+          providerRef: purchaseToken,
+          purchaseToken,
+          purchaseDate: new Date(),
+          skipEntitlementGrant: true,
+          skipReceiptRecording: true,
+        });
+        redirectTo = finalized.redirectTo;
+      } catch {
+        redirectTo = undefined;
+      }
+    }
+
+    return NextResponse.json({ ok: true, skuId, alreadyProcessed: true, entitlement: getEntitlement(claims.userId), redirectTo });
   }
 
   const expiresDate = "expiresDate" in result ? result.expiresDate as string | undefined : undefined;
   const expiresAt   = expiresDate ? new Date(expiresDate) : undefined;
 
-  grantFromSku(claims.userId, skuId, new Date(), expiresAt);
+  grantFromSku(claims.userId, skuId, new Date(), expiresAt, {
+    orderId: body.orderId,
+    transactionId,
+    purchaseToken,
+    sourceType: "purchase",
+  });
 
   recordIapReceipt({
     userId:        claims.userId,
@@ -214,5 +335,25 @@ export async function POST(request: Request) {
     rawResponse:   JSON.stringify(result),
   });
 
-  return NextResponse.json({ ok: true, skuId, entitlement: getEntitlement(claims.userId) });
+  if (body.orderId) {
+    try {
+      const finalized = await finalizePaidOrder({
+        orderId: body.orderId,
+        userId: claims.userId,
+        paymentKey: transactionId,
+        paymentType: "GOOGLE_IAP",
+        providerRef: purchaseToken,
+        purchaseToken,
+        purchaseDate: new Date(),
+        skipEntitlementGrant: true,
+        skipReceiptRecording: true,
+      });
+      redirectTo = finalized.redirectTo;
+    } catch (error) {
+      const code = error instanceof OrderFulfillmentError ? error.code : "ORDER_FULFILLMENT_FAILED";
+      return NextResponse.json({ error: code }, { status: 422 });
+    }
+  }
+
+  return NextResponse.json({ ok: true, skuId, entitlement: getEntitlement(claims.userId), redirectTo });
 }

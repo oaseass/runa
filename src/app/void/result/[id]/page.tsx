@@ -3,7 +3,12 @@ import Link from "next/link";
 import BackButton from "@/components/BackButton";
 import { getVoidEligibility } from "@/lib/server/void-eligibility";
 import { getVoidAnalysisRequest } from "@/lib/server/void-store";
-import type { VoidAnalysisOutput, VoidDecision } from "@/lib/server/void-analysis";
+import { getOrderByAnalysisId } from "@/lib/server/order-store";
+import {
+  normalizeLegacyVoidAnalysisOutput,
+  type VoidAnalysisOutput,
+  type VoidDecision,
+} from "@/lib/server/void-analysis";
 import type { DecisionFactor } from "@/lib/server/void-decision";
 import { refreshAnalysisAction } from "../../_actions/refreshAnalysisRequest";
 
@@ -192,13 +197,20 @@ export default async function VoidResultByIdPage({
   const request = getVoidAnalysisRequest(id, eligibility.userId);
   if (!request) notFound();
 
+  const linkedOrder = getOrderByAnalysisId(id, eligibility.userId);
+  if (linkedOrder && linkedOrder.status !== "paid") {
+    notFound();
+  }
+
   const catLabel = CATEGORY_LABELS[request.category] ?? request.category.toUpperCase();
   const backHref = `/void/${request.category}`;
 
   let analysisOutput: VoidAnalysisOutput | null = null;
   if (request.status === "complete" && request.analysisJson) {
     try {
-      analysisOutput = JSON.parse(request.analysisJson) as VoidAnalysisOutput;
+      analysisOutput = normalizeLegacyVoidAnalysisOutput(
+        JSON.parse(request.analysisJson) as VoidAnalysisOutput,
+      );
     } catch {
       // corrupt JSON — treat as failed
     }

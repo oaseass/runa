@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getVoidEligibility } from "@/lib/server/void-eligibility";
-import { getPaidProductIds } from "@/lib/server/order-store";
+import { getUnifiedPurchaseState } from "@/lib/server/purchase-state";
 import { VoidEligibilityProvider } from "./_context/VoidEligibilityContext";
 
 /** Redirect destination for each missing birth field */
@@ -44,14 +44,28 @@ export default async function VoidLayout({
 
   // eligibility.status === "chart-ready"
   const skipPayment = process.env.SKIP_PAYMENT === "true" || process.env.NEXT_PUBLIC_SKIP_PAYMENT === "true";
-  const paidIds = skipPayment ? null : getPaidProductIds(eligibility.userId);
-  const canSend = skipPayment || (paidIds !== null && (paidIds.has("membership") || paidIds.has("question")));
+  let purchaseState = null;
+
+  if (!skipPayment) {
+    try {
+      purchaseState = getUnifiedPurchaseState(eligibility.userId);
+    } catch (error) {
+      console.error("[void/layout] purchase-state fallback", error);
+    }
+  }
+
+  const isVip = skipPayment || Boolean(purchaseState?.isVip);
+  const voidCredits = skipPayment ? 0 : (purchaseState?.voidCredits ?? 0);
+  const isAdminVip = Boolean(purchaseState?.isVip && purchaseState?.vipSource === "admin");
+  const canSend = skipPayment || isAdminVip || voidCredits > 0;
 
   const ctxValue = {
     userId: eligibility.userId,
     username: eligibility.username,
     chartAvailable: true,
     chartHash: eligibility.chartHash,
+    isVip,
+    voidCredits,
     canSend,
   };
 

@@ -6,6 +6,15 @@ import { verifySessionToken, AUTH_COOKIE_NAME } from "@/lib/server/auth-session"
 const MAX_PATH_LEN = 200;
 const MAX_EVT_LEN  = 60;
 
+function isReadonlySqliteError(error: unknown) {
+  return Boolean(
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    (error as { code?: string }).code === "SQLITE_READONLY"
+  );
+}
+
 export async function POST(req: NextRequest) {
   let body: unknown;
   try { body = await req.json(); } catch {
@@ -31,7 +40,13 @@ export async function POST(req: NextRequest) {
     const referrer = typeof b.referrer === "string" ? b.referrer.slice(0, MAX_PATH_LEN) : null;
     const duration = typeof b.durationMs === "number" ? Math.max(0, Math.floor(b.durationMs)) : null;
     if (!path) return NextResponse.json({ error: "missing path" }, { status: 400 });
-    insertPageView(sessionId, path, userId, referrer, duration);
+    try {
+      insertPageView(sessionId, path, userId, referrer, duration);
+    } catch (error) {
+      if (!isReadonlySqliteError(error)) {
+        return NextResponse.json({ error: "track_failed" }, { status: 500 });
+      }
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -42,7 +57,13 @@ export async function POST(req: NextRequest) {
       ? b.properties as Record<string, unknown>
       : null;
     if (!event) return NextResponse.json({ error: "missing event" }, { status: 400 });
-    insertAnalyticsEvent(sessionId, event, userId, path, props);
+    try {
+      insertAnalyticsEvent(sessionId, event, userId, path, props);
+    } catch (error) {
+      if (!isReadonlySqliteError(error)) {
+        return NextResponse.json({ error: "track_failed" }, { status: 500 });
+      }
+    }
     return NextResponse.json({ ok: true });
   }
 

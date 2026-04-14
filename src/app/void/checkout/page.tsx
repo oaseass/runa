@@ -122,7 +122,7 @@ export default async function VoidCheckoutPage({
           </div>
           <div className="void-co-detail-row void-co-detail-price">
             <span>가격</span>
-            <span>₩4,900</span>
+            <span>₩500</span>
           </div>
         </div>
 
@@ -133,8 +133,8 @@ export default async function VoidCheckoutPage({
               clientKey={clientKey!}
               customerKey={claims.userId}
               orderId={orderId}
-              amount={4_900}
-              orderName="Void 질문 보고서"
+              amount={500}
+              orderName="VOID 1회권"
               customerName={username ?? undefined}
             />
           </div>

@@ -125,8 +125,14 @@ db.exec(`
     metadata TEXT,
     payment_key TEXT,
     payment_type TEXT,
+    provider_ref TEXT,
     analysis_id TEXT,
     paid_at TEXT,
+    refunded_at TEXT,
+    refund_amount INTEGER NOT NULL DEFAULT 0,
+    refund_reason TEXT,
+    refund_source TEXT,
+    refund_reference TEXT,
     fail_code TEXT,
     fail_message TEXT,
     created_at TEXT NOT NULL,
@@ -190,21 +196,29 @@ db.exec(`
   );
 `);
 
-// Migrate existing onboarding_profiles table ??add new columns if missing
+// Migrate existing onboarding_profiles table — add new columns if missing
 const migrateColumns = [
   "ALTER TABLE onboarding_profiles ADD COLUMN birth_date TEXT",
   "ALTER TABLE onboarding_profiles ADD COLUMN birth_latitude REAL",
   "ALTER TABLE onboarding_profiles ADD COLUMN birth_longitude REAL",
   "ALTER TABLE onboarding_profiles ADD COLUMN birth_timezone TEXT",
   "ALTER TABLE onboarding_profiles ADD COLUMN birth_utc_datetime TEXT",
-  // orders ??report JSON storage (yearly / area products)
+  // orders — report JSON storage (yearly / area products)
   "ALTER TABLE orders ADD COLUMN report_json TEXT",
+  "ALTER TABLE orders ADD COLUMN provider_ref TEXT",
+  "ALTER TABLE orders ADD COLUMN refunded_at TEXT",
+  "ALTER TABLE orders ADD COLUMN refund_amount INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE orders ADD COLUMN refund_reason TEXT",
+  "ALTER TABLE orders ADD COLUMN refund_source TEXT",
+  "ALTER TABLE orders ADD COLUMN refund_reference TEXT",
+  "ALTER TABLE entitlements ADD COLUMN vip_void_credits INTEGER NOT NULL DEFAULT 0",
+  "ALTER TABLE entitlements ADD COLUMN vip_void_cycle TEXT",
 ];
 for (const sql of migrateColumns) {
   try { db.exec(sql); } catch { /* column already exists */ }
 }
 
-// ?? Entitlement system (IAP / subscription state) ?????????????????????????
+// ── Entitlement system (IAP / subscription state) ─────────────────────────
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS entitlements (
@@ -212,10 +226,12 @@ db.exec(`
     is_vip               INTEGER NOT NULL DEFAULT 0,
     vip_source           TEXT,           -- 'vip_monthly'|'vip_yearly'|'admin'
     vip_expires_at       TEXT,           -- ISO-8601; NULL = indefinite (admin grant)
-    vip_grace_until      TEXT,           -- billing grace period end (??6 days after expiry)
+    vip_grace_until      TEXT,           -- billing grace period end (≤16 days after expiry)
     annual_report_owned  INTEGER NOT NULL DEFAULT 0,
     area_reports_owned   INTEGER NOT NULL DEFAULT 0,
     void_credits         INTEGER NOT NULL DEFAULT 0,
+    vip_void_credits     INTEGER NOT NULL DEFAULT 0,
+    vip_void_cycle       TEXT,
     updated_at           TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
   );
@@ -239,7 +255,52 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_iap_receipts_user     ON iap_receipts(user_id);
   CREATE INDEX IF NOT EXISTS idx_iap_receipts_sku      ON iap_receipts(sku_id);
+  CREATE INDEX IF NOT EXISTS idx_iap_receipts_token    ON iap_receipts(purchase_token);
   CREATE INDEX IF NOT EXISTS idx_entitlements_vip      ON entitlements(is_vip);
+
+  CREATE TABLE IF NOT EXISTS refund_events (
+    id                TEXT PRIMARY KEY,
+    order_id          TEXT,
+    user_id           TEXT NOT NULL,
+    source            TEXT NOT NULL,
+    reason            TEXT,
+    amount            INTEGER NOT NULL DEFAULT 0,
+    status            TEXT NOT NULL DEFAULT 'completed',
+    external_ref      TEXT,
+    transaction_id    TEXT,
+    purchase_token    TEXT,
+    metadata          TEXT,
+    created_at        TEXT NOT NULL,
+    processed_at      TEXT,
+    FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE SET NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS void_credit_ledger (
+    id                TEXT PRIMARY KEY,
+    user_id           TEXT NOT NULL,
+    order_id          TEXT,
+    sku_id            TEXT NOT NULL,
+    transaction_id    TEXT,
+    purchase_token    TEXT,
+    source_type       TEXT NOT NULL,
+    total_credits     INTEGER NOT NULL,
+    consumed_credits  INTEGER NOT NULL DEFAULT 0,
+    refunded_credits  INTEGER NOT NULL DEFAULT 0,
+    status            TEXT NOT NULL DEFAULT 'active',
+    created_at        TEXT NOT NULL,
+    updated_at        TEXT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE SET NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_refund_events_order            ON refund_events(order_id);
+  CREATE INDEX IF NOT EXISTS idx_refund_events_external_ref     ON refund_events(source, external_ref);
+  CREATE INDEX IF NOT EXISTS idx_refund_events_transaction      ON refund_events(source, transaction_id);
+  CREATE INDEX IF NOT EXISTS idx_void_credit_ledger_user        ON void_credit_ledger(user_id);
+  CREATE INDEX IF NOT EXISTS idx_void_credit_ledger_order       ON void_credit_ledger(order_id);
+  CREATE INDEX IF NOT EXISTS idx_void_credit_ledger_transaction ON void_credit_ledger(transaction_id);
+  CREATE INDEX IF NOT EXISTS idx_void_credit_ledger_token       ON void_credit_ledger(purchase_token);
 
   CREATE TABLE IF NOT EXISTS push_devices (
     id                     TEXT PRIMARY KEY,
@@ -283,5 +344,49 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_push_delivery_log_user        ON push_delivery_log(user_id);
   CREATE INDEX IF NOT EXISTS idx_push_delivery_log_campaign    ON push_delivery_log(campaign, dedupe_key);
 `);
+
+const legacyVoidBalances = db.prepare(`
+  SELECT e.user_id, e.void_credits
+  FROM entitlements e
+  LEFT JOIN (
+    SELECT user_id,
+           COALESCE(SUM(MAX(total_credits - consumed_credits - refunded_credits, 0)), 0) AS ledger_credits
+    FROM void_credit_ledger
+    GROUP BY user_id
+  ) l ON l.user_id = e.user_id
+  WHERE e.void_credits > COALESCE(l.ledger_credits, 0)
+`).all() as Array<{ user_id: string; void_credits: number }>;
+
+const insertLegacyVoidBalance = db.prepare(`
+  INSERT INTO void_credit_ledger
+    (id, user_id, order_id, sku_id, transaction_id, purchase_token, source_type, total_credits, consumed_credits, refunded_credits, status, created_at, updated_at)
+  VALUES
+    (@id, @userId, NULL, 'void_single', NULL, NULL, 'legacy_balance', @credits, 0, 0, 'active', @now, @now)
+`);
+
+const syncLegacyVoidBalance = db.transaction(() => {
+  for (const row of legacyVoidBalances) {
+    const ledgerRow = db.prepare(`
+      SELECT COALESCE(SUM(MAX(total_credits - consumed_credits - refunded_credits, 0)), 0) AS ledger_credits
+      FROM void_credit_ledger
+      WHERE user_id = @userId
+    `).get({ userId: row.user_id }) as { ledger_credits: number };
+
+    const missingCredits = Math.max(0, row.void_credits - (ledgerRow.ledger_credits ?? 0));
+    if (missingCredits <= 0) {
+      continue;
+    }
+
+    const now = new Date().toISOString();
+    insertLegacyVoidBalance.run({
+      id: `legacy-${row.user_id}-${now}`,
+      userId: row.user_id,
+      credits: missingCredits,
+      now,
+    });
+  }
+});
+
+syncLegacyVoidBalance();
 
 export { db };

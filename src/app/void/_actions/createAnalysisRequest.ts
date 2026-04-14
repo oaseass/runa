@@ -3,12 +3,23 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { verifySessionToken } from "@/lib/server/auth-session";
+import { consumeVoidCredit } from "@/lib/server/entitlement-store";
+import { getUnifiedPurchaseState } from "@/lib/server/purchase-state";
 import { getVoidEligibility } from "@/lib/server/void-eligibility";
 import { createVoidAnalysisRequest, updateVoidAnalysisRequest } from "@/lib/server/void-store";
 import { generateVoidAnalysis } from "@/lib/server/void-analysis";
 import type { CategoryKey } from "@/app/void/types";
 
 const VALID_CATEGORIES: CategoryKey[] = ["self", "love", "work", "social"];
+
+function isReadonlySqliteError(error: unknown) {
+  return Boolean(
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    (error as { code?: string }).code === "SQLITE_READONLY"
+  );
+}
 
 /**
  * Server Action: createAnalysisRequest
@@ -51,15 +62,46 @@ export async function createAnalysisRequestAction(formData: FormData) {
   const questionType =
     formData.get("questionType") === "custom" ? "custom" : ("preset" as const);
 
-  // 4. Persist record with status "generating"
-  const record = createVoidAnalysisRequest({
-    userId,
-    category,
-    questionText,
-    questionType,
-    chartHash: eligibility.chartHash || null,
-    initialStatus: "generating",
+  const fallbackParams = new URLSearchParams({
+    cat: category,
+    q: questionText,
+    type: questionType,
   });
+
+  const skipPayment =
+    process.env.SKIP_PAYMENT === "true" ||
+    process.env.NEXT_PUBLIC_SKIP_PAYMENT === "true";
+
+  if (!skipPayment) {
+    try {
+      const purchaseState = getUnifiedPurchaseState(userId);
+      const isAdminVip = purchaseState.isVip && purchaseState.vipSource === "admin";
+      if (!isAdminVip && !consumeVoidCredit(userId)) {
+        redirect(`/void/${category}?gate=no-credits`);
+      }
+    } catch (error) {
+      console.error("[void/createAnalysisRequest] purchase-state fallback", error);
+      redirect(`/void/${category}?gate=no-credits`);
+    }
+  }
+
+  // 4. Persist record with status "generating"
+  let record;
+  try {
+    record = createVoidAnalysisRequest({
+      userId,
+      category,
+      questionText,
+      questionType,
+      chartHash: eligibility.chartHash || null,
+      initialStatus: "generating",
+    });
+  } catch (error) {
+    if (isReadonlySqliteError(error)) {
+      redirect(`/void/result?${fallbackParams.toString()}`);
+    }
+    throw error;
+  }
 
   // 5. Derive analysis from real chart data
   let analysisJson: string | undefined;
@@ -78,7 +120,14 @@ export async function createAnalysisRequestAction(formData: FormData) {
     finalStatus = "failed";
   }
 
-  updateVoidAnalysisRequest(record.id, { status: finalStatus, analysisJson });
+  try {
+    updateVoidAnalysisRequest(record.id, { status: finalStatus, analysisJson });
+  } catch (error) {
+    if (isReadonlySqliteError(error)) {
+      redirect(`/void/result?${fallbackParams.toString()}`);
+    }
+    throw error;
+  }
 
   // 6. Redirect to durable result route
   redirect(`/void/result/${record.id}`);

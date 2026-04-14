@@ -718,7 +718,6 @@ function neutralNote(
   planet: PlanetName,
   natalSign: SignName,
   category: VoidCategory = "self",
-  intent: QuestionIntent = "identity",
 ): string {
   const p = PLANET_LABEL_KO[planet] ?? String(planet);
   const s = SIGN_KO[natalSign];
@@ -1411,10 +1410,10 @@ const SCHEMA_ANSWER_TEXT: Record<QuestionIntent, Record<string, string>> = {
     no:        "자아 판단이 흐려진 상태입니다 — 섣부른 정체성 결론은 피하세요",
   },
   pattern: {
-    yes:       "패턴을 인식했다면 지금이 바꿀 수 있는 타이밍입니다",
-    partly:    "패턴이 부분적으로 보입니다 — 조금 더 관찰이 필요합니다",
-    not_fully: "패턴 인식이 형성 중입니다 — 조금 더 관찰하세요",
-    no:        "지금 변화 시도는 패턴을 강화합니다 — 인식만으로도 충분합니다",
+    yes:       "반복의 고리가 보여서 지금이 흐름을 바꿔볼 때입니다",
+    partly:    "반복의 흐름이 조금씩 보입니다 — 조금 더 지켜보세요",
+    not_fully: "반복의 이유가 드러나는 중입니다 — 조금 더 지켜보세요",
+    no:        "지금 급히 바꾸려 하면 같은 흐름만 더 강해집니다",
   },
   self_trust: {
     yes:       "지금 내 판단을 믿어도 됩니다 — 내면 신호가 안정적입니다",
@@ -1449,7 +1448,7 @@ const SCHEMA_TAG: Partial<Record<QuestionIntent, Partial<Record<string, string>>
   self_worth:    { yes: "충분함",           partly: "자기평가 흔들림", not_fully: "평가 왜곡",  no: "비판 지배"     },
   self_trust:    { yes: "신뢰 가능",        partly: "재확인 필요",    not_fully: "신호 흔들림",no: "흐려진 상태"   },
   identity:      { yes: "방향 명확",        partly: "정립 중",        not_fully: "재편 중",    no: "흐려진 상태"   },
-  pattern:       { yes: "전환 가능",        partly: "부분 인식",      not_fully: "형성 중",    no: "강화 중"       },
+  pattern:       { yes: "바꿔볼 수 있음", partly: "조금 보임",      not_fully: "더 지켜봐야 함", no: "반복 강해짐"    },
   fear:          { yes: "직면 가능",        partly: "직면 중",        not_fully: "불명확",     no: "두려움 지배"   },
   growth:        { positive: "성장 중",     adjusting: "재정렬 중",   observing: "준비 중",    blocked: "정체 중"  },
   stagnation:    { positive: "돌파 가능",   adjusting: "이유 있는 정체",observing: "변화 준비 중",blocked: "정체 지속"},
@@ -1471,9 +1470,9 @@ const SCHEMA_TAG: Partial<Record<QuestionIntent, Partial<Record<string, string>>
   communication: { act_now: "표현 가능",    start_small: "짧게 시작", wait: "정리 중",          do_not_act: "역효과"},
   boundary:      { act_now: "설정 가능",    start_small: "작게 시작", wait: "더 파악",          do_not_act: "역효과"},
   compatibility: { likely: "조화로움",      mixed: "조율 필요",       unlikely: "충돌"          },
-  trust:         { likely: "신뢰 가능",     mixed: "형성 중",         unlikely: "위험"          },
+  trust:         { likely: "신뢰 가능",     mixed: "더 봐야 함",      unlikely: "위험"          },
   opportunity:   { likely: "잡을 수 있음",  mixed: "미성숙",          unlikely: "함정 가능성"   },
-  belonging:     { likely: "맞는 환경",     mixed: "공명 형성 중",    unlikely: "맞지 않음"     },
+  belonging:     { likely: "맞는 환경",     mixed: "아직 더 봐야 함", unlikely: "맞지 않음"     },
 };
 
 const DECISION_TEXT_REPLACEMENTS: Array<[string, string]> = [
@@ -1629,7 +1628,7 @@ export function computeDecision(
       const ts = transitPlanetScore(natalPlanet.longitude, transitLons, category, intent);
       const affinity = natalSignAffinity(planet, natalSign, intent);
       score = Math.max(0, Math.min(100, ts.score + affinity));
-      note  = ts.topNote ?? neutralNote(planet, natalSign, category, intent);
+      note  = ts.topNote ?? neutralNote(planet, natalSign, category);
     }
 
     rawFactors.push({

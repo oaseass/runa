@@ -1,0 +1,15 @@
+{
+  "appId": "com.lunastar.app",
+  "appName": "LUNA",
+  "webDir": "native-shell",
+  "server": {
+    "url": "https://runa.co.kr",
+    "cleartext": false,
+    "androidScheme": "https"
+  },
+  "android": {
+    "adjustMarginsForEdgeToEdge": "force",
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": true
+  }
+}

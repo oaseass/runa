@@ -9,7 +9,11 @@ export type VoidEligibilityCtx = {
   chartAvailable: boolean;
   /** SHA-256 chart fingerprint; null when chartAvailable is false */
   chartHash: string | null;
-  /** true = 결제 없이 바로 분석 실행 가능 (멤버십/단품 결제 완료 or SKIP_PAYMENT) */
+  /** true = VIP 구독 활성 상태. 깊이 보기 등 프리미엄 접근 권한에 사용됩니다. */
+  isVip: boolean;
+  /** Remaining VOID question credits, including this month's VIP allocation when active. */
+  voidCredits: number;
+  /** true = 지금 바로 VOID 분석 실행 가능 */
   canSend: boolean;
 };
 

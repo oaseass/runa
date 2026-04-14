@@ -95,9 +95,37 @@ function BirthTimePageInner() {
     router.push("/birth-place");
   }
 
+  function handleReturnToStart() {
+    if (isSaving) {
+      return;
+    }
+
+    router.push(isEditMode ? "/profile/chart" : "/start");
+  }
+
   return (
     <main className="screen screen-dark">
       <section className="step-wrap step-wrap-dark" aria-label="Birth time step">
+        <button
+          type="button"
+          onClick={handleReturnToStart}
+          style={{
+            alignSelf: "flex-start",
+            background: "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.18)",
+            color: "rgba(255,255,255,0.88)",
+            borderRadius: "999px",
+            padding: "0.58rem 0.95rem",
+            fontSize: "0.74rem",
+            letterSpacing: "0.04em",
+            marginBottom: "1rem",
+            cursor: "pointer",
+          }}
+          aria-label={isEditMode ? "차트로 돌아가기" : "처음으로 돌아가기"}
+        >
+          {isEditMode ? "← 차트로 돌아가기" : "← 처음으로 돌아가기"}
+        </button>
+
         <p className="dark-brand">LUNA</p>
         <h1 className="step-title step-title-strong">태어난 날짜와 시간</h1>
 

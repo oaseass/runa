@@ -45,6 +45,55 @@ export type VoidAnalysisOutput = {
 
 export type { VoidDecision };
 
+const LEGACY_VOID_COPY_REPLACEMENTS: Array<[string, string]> = [
+  ["패턴 인식이 형성 중입니다 — 조금 더 관찰하세요", "반복의 이유가 드러나는 중입니다 — 조금 더 지켜보세요"],
+  ["패턴이 부분적으로 보입니다 — 조금 더 관찰이 필요합니다", "반복의 흐름이 조금씩 보입니다 — 조금 더 지켜보세요"],
+  ["패턴을 인식했다면 지금이 바꿀 수 있는 타이밍입니다", "반복의 고리가 보여서 지금이 흐름을 바꿔볼 때입니다"],
+  ["지금 변화 시도는 패턴을 강화합니다 — 인식만으로도 충분합니다", "지금 급히 바꾸려 하면 같은 흐름만 더 강해집니다"],
+  ["토성이 패턴 인식을 지지합니다. 구조를 보면 탈출구가 보입니다", "토성이 반복의 흐름을 읽는 힘을 보탭니다. 구조를 보면 빠져나갈 길이 보입니다"],
+  ["패턴 인식 에너지가 열려있습니다 — 지금 보이는 게 진짜 패턴입니다", "반복의 흐름을 읽는 감각이 열려 있습니다 — 지금 보이는 신호를 흘려보내지 마세요"],
+  ["신뢰 기반이 아직 형성 중입니다 — 더 파악한 후 판단하세요", "신뢰의 바탕을 더 봐야 합니다 — 조금 더 확인한 뒤 판단하세요"],
+  ["맞지 않는다고 확신하기 이릅니다 — 공명이 아직 형성 중입니다", "아직 안 맞는다고 단정하긴 이릅니다 — 조금 더 지켜보세요"],
+  ["관계 에너지가 아직 형성 중입니다 — 서두르지 마세요", "관계의 흐름을 더 봐야 합니다 — 서두르지 마세요"],
+  ["충분하지 않아서가 아닙니다 — 드러낼 구조가 아직 형성 중입니다", "부족해서가 아닙니다 — 아직 드러나지 않은 흐름이 있습니다"],
+  ["같은 실수가 반복될 때 달(반응 패턴)과 토성(반복 구조)을 봅니다. 의지의 문제가 아니라 별 지도에 새겨진 구조입니다. 패턴을 알면 선택지가 생깁니다.", "같은 실수가 반복될 때는 달(반응 습관)과 토성(반복 구조)을 함께 봅니다. 의지가 약해서라기보다 익숙한 흐름이 굳어진 경우가 많습니다. 그 흐름이 보이면 선택도 달라질 수 있습니다."],
+];
+
+function normalizeLegacyVoidText(text: string): string {
+  let normalized = text;
+  for (const [from, to] of LEGACY_VOID_COPY_REPLACEMENTS) {
+    normalized = normalized.split(from).join(to);
+  }
+
+  if (normalized === "형성 중") return "더 지켜봐야 함";
+  if (normalized === "공명 형성 중") return "아직 더 봐야 함";
+  if (normalized === "구조 형성 중") return "더 다져야 함";
+  if (normalized === "경계 형성 중") return "경계 세우는 중";
+
+  return normalized;
+}
+
+export function normalizeLegacyVoidAnalysisOutput(output: VoidAnalysisOutput): VoidAnalysisOutput {
+  return {
+    ...output,
+    decision: {
+      ...output.decision,
+      headline: normalizeLegacyVoidText(output.decision.headline),
+      summary: normalizeLegacyVoidText(output.decision.summary),
+      answerTag: normalizeLegacyVoidText(output.decision.answerTag),
+      factors: output.decision.factors.map((factor) => ({
+        ...factor,
+        note: normalizeLegacyVoidText(factor.note),
+      })),
+    },
+    sections: output.sections.map((section) => ({
+      ...section,
+      body: normalizeLegacyVoidText(section.body),
+      keyLine: normalizeLegacyVoidText(section.keyLine),
+    })) as VoidAnalysisOutput["sections"],
+  };
+}
+
 // ── Category -> domain label ──────────────────────────────────────────────────
 
 const CATEGORY_DOMAIN: Record<CategoryKey, string> = {
@@ -573,7 +622,7 @@ const SECTION1_INTENT_FRAME: Record<QuestionIntent, string> = {
   direction:     "방향이 안 잡힐 때는 토성(구조화 흐름)과 수성(사고 방식)을 봅니다. 방향이 없는 게 아니라 인식이 아직 안 됐거나 흐름이 아직 모이지 않은 것입니다.",
   identity:      "지금 '나는 누구인가'를 물을 때 태양(자아 핵심)과 달(내면 안정)을 봅니다. 이 질문은 답을 구하는 것이 아니라 지금 자아가 어떤 상태인지를 보는 것입니다.",
   energy:        "몸이 소진됐을 때 달(감정 흐름)과 토성(소진 패턴)을 봅니다. 피곤함이 일시적인 건지, 구조적으로 쌓인 것인지가 대응 방법을 다르게 합니다.",
-  pattern:       "같은 실수가 반복될 때 달(반응 패턴)과 토성(반복 구조)을 봅니다. 의지의 문제가 아니라 별 지도에 새겨진 구조입니다. 패턴을 알면 선택지가 생깁니다.",
+  pattern:       "같은 실수가 반복될 때는 달(반응 습관)과 토성(반복 구조)을 함께 봅니다. 의지가 약해서라기보다 익숙한 흐름이 굳어진 경우가 많습니다. 그 흐름이 보이면 선택도 달라질 수 있습니다.",
   purpose:       "의미를 잃은 느낌이 들 때 목성(의미 확장)과 태양(삶의 방향)을 봅니다. 의미 부재는 방향이 없어서가 아니라 흐름이 아직 모이지 않은 단계일 수 있습니다.",
   friendship:    "우정에 대해 고민할 때 달(감정 연결)과 금성(우정 흐름)을 봅니다. 진짜 우정과 소진을 주는 관계의 차이는 흐름의 방향에 있습니다.",
   group:         "집단 속에서 자신의 위치를 고민할 때 토성(역할 구조)과 달(소속감)을 봅니다. 이 집단이 나에게 맞는지, 아직 역할을 찾는 중인지가 다릅니다.",

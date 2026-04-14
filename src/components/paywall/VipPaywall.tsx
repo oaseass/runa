@@ -13,31 +13,16 @@
 import { useCallback, useState } from "react";
 import { SKUS, formatAmount, LEGAL_LINKS, VIP_MONTHLY, VIP_YEARLY } from "@/lib/products";
 import type { SubscriptionSkuId } from "@/lib/products";
-
-// ── Capacitor IAP bridge type ─────────────────────────────────────────────────
-
-interface CapacitorGlobal {
-  isNativePlatform?: () => boolean;
-  Plugins?: Record<string, unknown>;
-}
-
-function getNativePlatform(): "ios" | "android" | null {
-  if (typeof window === "undefined") return null;
-  const cap = (window as typeof window & { Capacitor?: CapacitorGlobal }).Capacitor;
-  if (!cap?.isNativePlatform?.()) return null;
-  // Capacitor.getPlatform() or fallback by user agent
-  const ua = navigator.userAgent.toLowerCase();
-  return ua.includes("iphone") || ua.includes("ipad") ? "ios" : "android";
-}
+import { restoreNativePurchases } from "@/lib/native-iap";
 
 // ── Features list ─────────────────────────────────────────────────────────────
 
 const VIP_FEATURES = [
-  { icon: "✦", text: "모든 영역 보고서 무제한 열람" },
+  { icon: "✦", text: "깊이 보기와 프리미엄 해석 이용" },
   { icon: "✦", text: "매일 더 깊은 별자리 해석" },
-  { icon: "✦", text: "VOID 질문 무제한 이용 (월 10회 무료 포함)" },
+  { icon: "✦", text: "VOID 월 30회 크레딧 지급" },
   { icon: "✦", text: "두 사람의 관계 분석" },
-  { icon: "✦", text: "VIP 전용 리딩 · 연간 리포트 할인" },
+  { icon: "✦", text: "VIP 전용 리딩 · 결제 우선 해금" },
 ];
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -57,30 +42,14 @@ export default function VipPaywall({ onSuccess, onDismiss, mode = "page" }: VipP
   const [selected, setSelected]  = useState<SubscriptionSkuId>(VIP_YEARLY);
   const [loading,  setLoading]   = useState(false);
   const [error,    setError]     = useState<string | null>(null);
-  void onSuccess;
+  const [notice,   setNotice]    = useState<string | null>(null);
 
   const handleSubscribe = useCallback(async () => {
     setError(null);
+    setNotice(null);
     setLoading(true);
 
-    const platform = getNativePlatform();
-
     try {
-      if (platform) {
-        // Native IAP flow (placeholder — integrate Capacitor plugin here)
-        // 1. Initiate purchase via Capacitor Purchases / RevenueCat
-        // 2. On purchase success, call /api/iap/apple or /api/iap/google
-        // 3. On success, call onSuccess()
-        //
-        // Example (RevenueCat):
-        // const { CustomerInfo } = await Purchases.purchaseStoreProduct({ product });
-        //
-        // For now, fall through to web checkout
-        window.location.href = `/store/checkout?product=${selected}`;
-        return;
-      }
-
-      // Web checkout
       window.location.href = `/store/checkout?product=${selected}`;
     } catch {
       setError("구매 처리 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요.");
@@ -91,20 +60,26 @@ export default function VipPaywall({ onSuccess, onDismiss, mode = "page" }: VipP
 
   const handleRestore = useCallback(async () => {
     setError(null);
+    setNotice(null);
     setLoading(true);
+
     try {
-      // Native restore (Capacitor)
-      const platform = getNativePlatform();
-      if (!platform) {
-        setError("구매 복원은 앱에서만 가능해요.");
-        return;
+      const result = await restoreNativePurchases();
+      if ((result.entitlement?.isVip as boolean | undefined) || result.restoredCount > 0) {
+        setNotice("구매 내역을 불러왔어요.");
+        onSuccess?.();
+        if (!onSuccess) {
+          window.location.reload();
+        }
+      } else {
+        setNotice("복원할 구매 내역이 없어요.");
       }
-      // TODO: Capacitor Purchases restorePurchases() → POST /api/iap/restore
-      window.location.href = "/settings";
+    } catch {
+      setError("구매 복원 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onSuccess]);
 
   const isOverlay = mode === "overlay";
 
@@ -120,7 +95,7 @@ export default function VipPaywall({ onSuccess, onDismiss, mode = "page" }: VipP
           LUNA VIP
         </p>
         <h2 style={{ fontSize: "1.45rem", fontWeight: 700, color: "#f1f5f9", lineHeight: 1.25, margin: 0 }}>
-          별이 보내는 신호를<br />제한 없이 읽어요
+          별이 보내는 신호를<br />매달 더 깊게 읽어요
         </h2>
       </div>
 
@@ -181,6 +156,9 @@ export default function VipPaywall({ onSuccess, onDismiss, mode = "page" }: VipP
       </div>
 
       {/* CTA */}
+      {notice && (
+        <p style={{ color: "#a78bfa", fontSize: "0.76rem", textAlign: "center", marginBottom: "0.75rem" }}>{notice}</p>
+      )}
       {error && (
         <p style={{ color: "#f87171", fontSize: "0.76rem", textAlign: "center", marginBottom: "0.75rem" }}>{error}</p>
       )}

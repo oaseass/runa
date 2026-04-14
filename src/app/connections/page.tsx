@@ -50,12 +50,12 @@ export default async function ConnectionsPage() {
 
   if (claims) {
     // LUNA friends (user-to-user, contact-based)
-    lunaFriends = listFriends(claims.userId, "friend").map((f) => ({
+    lunaFriends = (await listFriends(claims.userId, "friend")).map((f) => ({
       id: f.userId,
       username: f.username,
     }));
 
-    const rows = listConnections(claims.userId);
+    const rows = await listConnections(claims.userId);
     connections = rows.map((row) => {
       let sunSign = "—";
       let moonSign = "—";

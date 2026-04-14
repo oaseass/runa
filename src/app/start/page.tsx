@@ -110,11 +110,12 @@ export default function StartPage() {
           style={{
             fontSize: "0.8rem",
             lineHeight: 1.75,
-            color: "rgba(255,255,255,0.36)",
+            color: "rgba(255,255,255,0.76)",
             letterSpacing: "0.025em",
             maxWidth: "20rem",
             margin: 0,
             wordBreak: "keep-all",
+            textShadow: "0 2px 16px rgba(0,0,0,0.42)",
           }}
         >
           별은 변명하지 않는다.<br />
@@ -174,9 +175,15 @@ export default function StartPage() {
           href="/account-access"
           style={{
             fontSize: "0.72rem",
-            color: "rgba(255,255,255,0.25)",
+            color: "rgba(255,255,255,0.78)",
             textDecoration: "none",
             letterSpacing: "0.05em",
+            padding: "0.4rem 0.75rem",
+            borderRadius: "999px",
+            background: "rgba(8,8,18,0.28)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            backdropFilter: "blur(8px)",
+            textShadow: "0 2px 12px rgba(0,0,0,0.35)",
           }}
         >
           이미 계정이 있어요

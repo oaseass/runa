@@ -6,12 +6,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
 import { getTodayDeepReportForUser } from "@/lib/server/chart-runtime";
+import { getUnifiedPurchaseStateSafe } from "@/lib/server/purchase-state";
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
   const session = verifySessionToken(token);
   if (!session) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const purchaseState = getUnifiedPurchaseStateSafe(session.userId);
+  if (!purchaseState?.isVip) {
+    return NextResponse.json({ success: false, error: "Premium required" }, { status: 402 });
   }
 
   const dateParam = request.nextUrl.searchParams.get("date");

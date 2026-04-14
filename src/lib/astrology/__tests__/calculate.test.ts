@@ -146,6 +146,19 @@ describe("Transit sensitivity", () => {
     // Over ~3 days, Moon moves ~39° — should always change sign
     assert.notEqual(i1.lede, i2.lede, "Moon should be in a different sign 3 days later");
   });
+
+  test("slow transit headlines do not collapse into a tiny 3-line loop", () => {
+    const chart = computeNatalChart(REF_INPUT);
+    const headlines = Array.from({ length: 6 }, (_, offset) => {
+      const date = new Date(Date.UTC(2026, 3, 14 + offset, 0, 0, 0));
+      return interpretTransits(chart, date).headline;
+    });
+
+    assert.ok(
+      new Set(headlines).size >= 5,
+      `Expected at least 5 distinct headlines across a sustained transit window, got: ${headlines.join(" | ")}`,
+    );
+  });
 });
 
 // ── Test 5: Output completeness ───────────────────────────────────────────────

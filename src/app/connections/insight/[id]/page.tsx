@@ -28,20 +28,44 @@ const TONE_SYMBOL: Record<string, string> = {
 };
 
 const TONE_COLOR: Record<string, string> = {
-  harmony: "rgba(255,255,255,0.52)",
-  tension: "rgba(255,160,80,0.62)",
-  neutral: "rgba(255,255,255,0.24)",
+  harmony: "rgba(20,21,22,0.62)",
+  tension: "rgba(176,89,37,0.82)",
+  neutral: "rgba(20,21,22,0.34)",
 };
+
+function getScoreLevel(score: number, invert = false) {
+  if (invert) {
+    if (score <= 34) return "낮음";
+    if (score <= 64) return "보통";
+    return "높음";
+  }
+
+  if (score >= 70) return "높음";
+  if (score >= 45) return "보통";
+  return "낮음";
+}
+
+function getScoreBadge(score: number, invert = false) {
+  if (invert) {
+    return score <= 34 ? "좋음" : "주의";
+  }
+
+  return score >= 60 ? "좋음" : "주의";
+}
+
+function getDisplayLabel(cat: SynastryCategory) {
+  return cat.key === "tension" ? "갈등 위험도" : cat.label;
+}
 
 // ── Score bar ─────────────────────────────────────────────────────────────────
 
 function ScoreBar({ score, tone }: { score: number; tone: string }) {
   const barColor =
     tone === "strength" || tone === "harmony"
-      ? "rgba(255,255,255,0.52)"
+      ? "rgba(20,21,22,0.48)"
       : tone === "challenge" || tone === "tension"
-      ? "rgba(255,160,80,0.5)"
-      : "rgba(255,255,255,0.28)";
+      ? "rgba(176,89,37,0.56)"
+      : "rgba(20,21,22,0.22)";
 
   return (
     <div className="luna-synastry-bar-wrap">
@@ -56,16 +80,24 @@ function ScoreBar({ score, tone }: { score: number; tone: string }) {
 // ── Category block ────────────────────────────────────────────────────────────
 
 function CategoryBlock({ cat }: { cat: SynastryCategory }) {
+  const isTension = cat.key === "tension";
   const toneCss =
     cat.tone === "strength" ? "luna-synastry-cat-strength" :
     cat.tone === "challenge" ? "luna-synastry-cat-challenge" :
     "luna-synastry-cat-neutral";
+  const level = getScoreLevel(cat.score, isTension);
+  const badge = getScoreBadge(cat.score, isTension);
+  const badgeCss = badge === "좋음" ? "luna-score-badge-good" : "luna-score-badge-caution";
 
   return (
     <div className="luna-synastry-cat">
       <div className="luna-synastry-cat-header">
-        <span className={`luna-synastry-cat-label ${toneCss}`}>{cat.label}</span>
-        <span className="luna-synastry-cat-score">{cat.score}</span>
+        <span className={`luna-synastry-cat-label ${toneCss}`}>{getDisplayLabel(cat)}</span>
+        <div className="luna-synastry-cat-score-wrap">
+          <span className="luna-synastry-cat-score-level">{level}</span>
+          <span className="luna-synastry-cat-score">{cat.score}</span>
+          <span className={`luna-score-badge ${badgeCss}`}>{badge}</span>
+        </div>
       </div>
       <ScoreBar score={cat.score} tone={cat.tone} />
       <p className="luna-synastry-cat-headline">{cat.headline}</p>
@@ -81,7 +113,7 @@ function CategoryBlock({ cat }: { cat: SynastryCategory }) {
           >
             {TONE_SYMBOL[cat.topAspect.tone]}
           </span>
-          <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.38)" }}>
+          <span style={{ fontSize: "0.7rem", color: "rgba(20,21,22,0.74)" }}>
             {PLANET_KO[cat.topAspect.planetA] ?? cat.topAspect.planetA}
             {" — "}
             {PLANET_KO[cat.topAspect.planetB] ?? cat.topAspect.planetB}
@@ -115,7 +147,7 @@ function AspectRow({ aspect }: { aspect: CrossAspect }) {
           <span className="luna-synastry-aspect-type">
             {ASPECT_KO[aspect.aspect] ?? aspect.aspect}
             {" "}
-            <span style={{ color: "rgba(255,255,255,0.22)" }}>
+            <span style={{ color: "rgba(20,21,22,0.46)" }}>
               {aspect.orb.toFixed(1)}°
             </span>
           </span>
@@ -136,16 +168,23 @@ function OverallScore({ score, tone }: { score: number; tone: string }) {
     "도전적인 구조";
 
   const color =
-    tone === "strength" ? "rgba(255,255,255,0.8)" :
-    tone === "challenge" ? "rgba(255,160,80,0.8)" :
-    "rgba(255,255,255,0.55)";
+    tone === "strength" ? "rgba(20,21,22,0.82)" :
+    tone === "challenge" ? "rgba(176,89,37,0.9)" :
+    "rgba(20,21,22,0.58)";
+  const level = getScoreLevel(score);
+  const badge = getScoreBadge(score);
+  const badgeCss = badge === "좋음" ? "luna-score-badge-good" : "luna-score-badge-caution";
 
   return (
     <div className="luna-synastry-overall">
       <span className="luna-synastry-overall-score" style={{ color }}>
         {score}
       </span>
-      <span className="luna-synastry-overall-label">{label}</span>
+      <div className="luna-synastry-overall-copy">
+        <span className="luna-synastry-overall-level">{level}</span>
+        <span className="luna-synastry-overall-label">{label}</span>
+      </div>
+      <span className={`luna-score-badge ${badgeCss}`}>{badge}</span>
     </div>
   );
 }
@@ -169,7 +208,7 @@ export default async function ConnectionInsightPage({
   const { userId, username } = claims;
 
   // Load connection (ownership check)
-  const connection = getConnection(id, userId);
+  const connection = await getConnection(id, userId);
   if (!connection) notFound();
 
   // Load owner chart
@@ -180,7 +219,7 @@ export default async function ConnectionInsightPage({
         <article className="luna-article-wrap">
           <BackButton />
           <div style={{ marginTop: "3rem" }}>
-            <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.38)", letterSpacing: "0.1em" }}>
+            <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.7)", letterSpacing: "0.1em" }}>
               내 별 지도가 준비되지 않았습니다.
             </p>
             <Link
@@ -189,7 +228,7 @@ export default async function ConnectionInsightPage({
                 display: "inline-block",
                 marginTop: "1rem",
                 fontSize: "0.75rem",
-                color: "rgba(255,255,255,0.55)",
+                color: "rgba(255,255,255,0.8)",
                 textDecoration: "underline",
               }}
             >
@@ -224,18 +263,61 @@ export default async function ConnectionInsightPage({
   try {
     connectionChart = JSON.parse(connection.chartJson) as NatalChart;
   } catch {
-    notFound();
+    return (
+      <main className="screen luna-article-screen" aria-label="Connection insight">
+        <article className="luna-article-wrap">
+          <BackButton />
+          <p className="luna-article-kicker">관계 해석</p>
+          <h1 className="luna-article-headline">{connection.name}의 차트를 읽어오지 못했습니다.</h1>
+          <p className="luna-article-lede">
+            입력된 정보를 다시 저장한 뒤 해석을 다시 시도해 주세요.
+          </p>
+          <Link href="/connections" className="luna-secondary-link" style={{ marginTop: "2rem", display: "inline-block" }}>
+            연결 목록으로 돌아가기
+          </Link>
+        </article>
+      </main>
+    );
   }
 
   // Get or compute synastry
   const ownerChartHash = ownerChart.chartHash ?? "";
-  let analysis: SynastryAnalysis | null = getCachedSynastry(userId, id, ownerChartHash);
+  let analysis: SynastryAnalysis | null = null;
+
+  try {
+    analysis = await getCachedSynastry(userId, id, ownerChartHash);
+
+    if (!analysis) {
+      analysis = computeSynastry(ownerChart, connectionChart, connection.timeKnown);
+      if (ownerChartHash) {
+        await saveSynastry(userId, id, ownerChartHash, analysis);
+      }
+    }
+  } catch {
+    analysis = null;
+  }
 
   if (!analysis) {
-    analysis = computeSynastry(ownerChart, connectionChart, connection.timeKnown);
-    if (ownerChartHash) {
-      saveSynastry(userId, id, ownerChartHash, analysis);
-    }
+    return (
+      <main className="screen luna-article-screen" aria-label="Connection insight">
+        <article className="luna-article-wrap">
+          <BackButton />
+          <p className="luna-article-kicker">관계 해석</p>
+          <h1 className="luna-article-headline">지금은 해석을 완성하지 못했습니다.</h1>
+          <p className="luna-article-lede">
+            저장된 연결 정보는 유지되어 있습니다. 잠시 후 다시 열거나 연결 목록에서 다시 시도해 주세요.
+          </p>
+          <div style={{ display: "flex", gap: "0.9rem", flexWrap: "wrap", marginTop: "2rem" }}>
+            <Link href="/connections" className="luna-black-cta">
+              연결 목록으로 가기
+            </Link>
+            <Link href="/connections/add" className="luna-secondary-link" style={{ display: "inline-block", marginTop: "0.6rem" }}>
+              새로 연결하기
+            </Link>
+          </div>
+        </article>
+      </main>
+    );
   }
 
   // Display data
@@ -349,7 +431,7 @@ export default async function ConnectionInsightPage({
           <p
             style={{
               fontSize: "0.65rem",
-              color: "rgba(255,255,255,0.24)",
+              color: "rgba(20,21,22,0.62)",
               letterSpacing: "0.06em",
               marginTop: "0.5rem",
               marginBottom: "1.5rem",
@@ -365,13 +447,13 @@ export default async function ConnectionInsightPage({
           style={{
             marginTop: "2.4rem",
             paddingTop: "1.2rem",
-            borderTop: "1px solid rgba(255,255,255,0.06)",
+            borderTop: "1px solid rgba(20,21,22,0.08)",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
           }}
         >
-          <span style={{ fontSize: "0.62rem", color: "rgba(255,255,255,0.22)", letterSpacing: "0.08em" }}>
+          <span style={{ fontSize: "0.62rem", color: "rgba(20,21,22,0.56)", letterSpacing: "0.08em" }}>
             {generatedDate} 생성
           </span>
           <Link href="/connections/add" className="luna-secondary-link" style={{ fontSize: "0.7rem" }}>

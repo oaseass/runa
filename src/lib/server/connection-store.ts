@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { db } from "./db";
 import type { SynastryAnalysis } from "@/lib/astrology/synastry";
+import { getExternalAuthStorage } from "@/lib/server/auth-storage";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,20 @@ type DbConnectionRow = {
   updated_at: string;
 };
 
+const CONNECTION_KEY_PREFIX = "luna:connections:v1";
+
+function connectionKey(id: string) {
+  return `${CONNECTION_KEY_PREFIX}:item:${id}`;
+}
+
+function connectionOwnerListKey(ownerUserId: string) {
+  return `${CONNECTION_KEY_PREFIX}:owner:${ownerUserId}`;
+}
+
+function synastryCacheKey(ownerUserId: string, connectionId: string, ownerChartHash: string) {
+  return `${CONNECTION_KEY_PREFIX}:synastry:${ownerUserId}:${connectionId}:${ownerChartHash}`;
+}
+
 function rowToConnection(row: DbConnectionRow): ConnectionRow {
   return {
     id: row.id,
@@ -71,9 +86,102 @@ export type CreateConnectionInput = {
   chartJson: string | null;
 };
 
+async function getExternalConnectionStorage() {
+  try {
+    return getExternalAuthStorage();
+  } catch {
+    return null;
+  }
+}
+
+async function createExternalConnection(input: CreateConnectionInput): Promise<ConnectionRow> {
+  const redis = await getExternalConnectionStorage();
+  if (!redis) {
+    throw new Error("EXTERNAL_CONNECTION_STORAGE_UNAVAILABLE");
+  }
+
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const record: ConnectionRow = {
+    id,
+    ownerUserId: input.ownerUserId,
+    name: input.name.trim(),
+    birthDate: input.birthDate,
+    birthHour: input.birthHour,
+    birthMinute: input.birthMinute,
+    birthLatitude: input.birthLatitude,
+    birthLongitude: input.birthLongitude,
+    birthTimezone: input.birthTimezone,
+    birthUtcDatetime: input.birthUtcDatetime,
+    timeKnown: input.timeKnown,
+    chartJson: input.chartJson,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const ownerListKey = connectionOwnerListKey(input.ownerUserId);
+  const existingIds = (await redis.get<string[]>(ownerListKey)) ?? [];
+
+  await Promise.all([
+    redis.set(connectionKey(id), record),
+    redis.set(ownerListKey, [id, ...existingIds.filter((value) => value !== id)]),
+  ]);
+
+  return record;
+}
+
+async function getExternalConnection(id: string, ownerUserId: string): Promise<ConnectionRow | null> {
+  const redis = await getExternalConnectionStorage();
+  if (!redis) {
+    return null;
+  }
+
+  const record = await redis.get<ConnectionRow>(connectionKey(id));
+  if (!record || record.ownerUserId !== ownerUserId) {
+    return null;
+  }
+
+  return record;
+}
+
+async function listExternalConnections(ownerUserId: string): Promise<ConnectionRow[]> {
+  const redis = await getExternalConnectionStorage();
+  if (!redis) {
+    return [];
+  }
+
+  const ids = (await redis.get<string[]>(connectionOwnerListKey(ownerUserId))) ?? [];
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const records = await Promise.all(ids.map((id) => redis.get<ConnectionRow>(connectionKey(id))));
+  return records.filter((record): record is ConnectionRow => record !== null && record.ownerUserId === ownerUserId);
+}
+
+async function deleteExternalConnection(id: string, ownerUserId: string): Promise<void> {
+  const redis = await getExternalConnectionStorage();
+  if (!redis) {
+    return;
+  }
+
+  const ownerListKey = connectionOwnerListKey(ownerUserId);
+  const ids = (await redis.get<string[]>(ownerListKey)) ?? [];
+
+  await Promise.all([
+    redis.del(connectionKey(id)),
+    redis.set(ownerListKey, ids.filter((value) => value !== id)),
+  ]);
+}
+
 // ── Connection CRUD ───────────────────────────────────────────────────────────
 
-export function createConnection(input: CreateConnectionInput): ConnectionRow {
+export async function createConnection(input: CreateConnectionInput): Promise<ConnectionRow> {
+  const externalStorage = await getExternalConnectionStorage();
+  if (externalStorage) {
+    return createExternalConnection(input);
+  }
+
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
@@ -106,27 +214,47 @@ export function createConnection(input: CreateConnectionInput): ConnectionRow {
     "SELECT * FROM connections WHERE id = @id"
   ).get({ id }) as DbConnectionRow;
 
+  if (!row) {
+    throw new Error("CONNECTION_CREATE_FAILED");
+  }
+
   return rowToConnection(row);
 }
 
-export function getConnection(
+export async function getConnection(
   id: string,
   ownerUserId: string,
-): ConnectionRow | null {
+): Promise<ConnectionRow | null> {
+  const externalStorage = await getExternalConnectionStorage();
+  if (externalStorage) {
+    return getExternalConnection(id, ownerUserId);
+  }
+
   const row = db.prepare(
     "SELECT * FROM connections WHERE id = @id AND owner_user_id = @ownerUserId"
   ).get({ id, ownerUserId }) as DbConnectionRow | undefined;
   return row ? rowToConnection(row) : null;
 }
 
-export function listConnections(ownerUserId: string): ConnectionRow[] {
+export async function listConnections(ownerUserId: string): Promise<ConnectionRow[]> {
+  const externalStorage = await getExternalConnectionStorage();
+  if (externalStorage) {
+    return listExternalConnections(ownerUserId);
+  }
+
   const rows = db.prepare(
     "SELECT * FROM connections WHERE owner_user_id = @ownerUserId ORDER BY created_at DESC"
   ).all({ ownerUserId }) as DbConnectionRow[];
   return rows.map(rowToConnection);
 }
 
-export function deleteConnection(id: string, ownerUserId: string): void {
+export async function deleteConnection(id: string, ownerUserId: string): Promise<void> {
+  const externalStorage = await getExternalConnectionStorage();
+  if (externalStorage) {
+    await deleteExternalConnection(id, ownerUserId);
+    return;
+  }
+
   db.prepare(
     "DELETE FROM connections WHERE id = @id AND owner_user_id = @ownerUserId"
   ).run({ id, ownerUserId });
@@ -134,49 +262,65 @@ export function deleteConnection(id: string, ownerUserId: string): void {
 
 // ── Synastry cache ────────────────────────────────────────────────────────────
 
-export function getCachedSynastry(
+export async function getCachedSynastry(
   ownerUserId: string,
   connectionId: string,
   ownerChartHash: string,
-): SynastryAnalysis | null {
-  const row = db.prepare(`
-    SELECT analysis_json FROM synastry_cache
-    WHERE owner_user_id = @ownerUserId
-      AND connection_id = @connectionId
-      AND owner_chart_hash = @ownerChartHash
-  `).get({ ownerUserId, connectionId, ownerChartHash }) as
-    { analysis_json: string } | undefined;
+): Promise<SynastryAnalysis | null> {
+  const externalStorage = await getExternalConnectionStorage();
+  if (externalStorage) {
+    return (await externalStorage.get<SynastryAnalysis>(synastryCacheKey(ownerUserId, connectionId, ownerChartHash))) ?? null;
+  }
 
-  if (!row) return null;
   try {
+    const row = db.prepare(`
+      SELECT analysis_json FROM synastry_cache
+      WHERE owner_user_id = @ownerUserId
+        AND connection_id = @connectionId
+        AND owner_chart_hash = @ownerChartHash
+    `).get({ ownerUserId, connectionId, ownerChartHash }) as
+      { analysis_json: string } | undefined;
+
+    if (!row) return null;
+
     return JSON.parse(row.analysis_json) as SynastryAnalysis;
   } catch {
     return null;
   }
 }
 
-export function saveSynastry(
+export async function saveSynastry(
   ownerUserId: string,
   connectionId: string,
   ownerChartHash: string,
   analysis: SynastryAnalysis,
-): void {
+): Promise<void> {
+  const externalStorage = await getExternalConnectionStorage();
+  if (externalStorage) {
+    await externalStorage.set(synastryCacheKey(ownerUserId, connectionId, ownerChartHash), analysis);
+    return;
+  }
+
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  db.prepare(`
-    INSERT INTO synastry_cache
-      (id, owner_user_id, connection_id, owner_chart_hash, analysis_json, computed_at)
-    VALUES
-      (@id, @ownerUserId, @connectionId, @ownerChartHash, @analysisJson, @now)
-    ON CONFLICT(owner_user_id, connection_id, owner_chart_hash)
-    DO UPDATE SET analysis_json = @analysisJson, computed_at = @now
-  `).run({
-    id,
-    ownerUserId,
-    connectionId,
-    ownerChartHash,
-    analysisJson: JSON.stringify(analysis),
-    now,
-  });
+  try {
+    db.prepare(`
+      INSERT INTO synastry_cache
+        (id, owner_user_id, connection_id, owner_chart_hash, analysis_json, computed_at)
+      VALUES
+        (@id, @ownerUserId, @connectionId, @ownerChartHash, @analysisJson, @now)
+      ON CONFLICT(owner_user_id, connection_id, owner_chart_hash)
+      DO UPDATE SET analysis_json = @analysisJson, computed_at = @now
+    `).run({
+      id,
+      ownerUserId,
+      connectionId,
+      ownerChartHash,
+      analysisJson: JSON.stringify(analysis),
+      now,
+    });
+  } catch {
+    // Cache persistence is best-effort only.
+  }
 }

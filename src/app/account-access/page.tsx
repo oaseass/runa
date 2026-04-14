@@ -48,9 +48,10 @@ export default function AccountAccessPage() {
           style={{
             fontSize: "0.52rem",
             letterSpacing: "0.38em",
-            color: "rgba(255,255,255,0.28)",
+            color: "rgba(255,255,255,0.48)",
             textTransform: "uppercase",
             fontWeight: 400,
+            textShadow: "0 2px 12px rgba(0,0,0,0.3)",
           }}
         >
           루나
@@ -59,9 +60,10 @@ export default function AccountAccessPage() {
           style={{
             fontSize: "1.05rem",
             letterSpacing: "0.28em",
-            color: "rgba(255,255,255,0.62)",
+            color: "rgba(255,255,255,0.78)",
             fontWeight: 300,
             textTransform: "uppercase",
+            textShadow: "0 2px 12px rgba(0,0,0,0.3)",
           }}
         >
           LUNA
@@ -109,11 +111,12 @@ export default function AccountAccessPage() {
           style={{
             fontSize: "0.8rem",
             lineHeight: 1.75,
-            color: "rgba(255,255,255,0.36)",
+            color: "rgba(255,255,255,0.76)",
             letterSpacing: "0.025em",
             maxWidth: "20rem",
             margin: 0,
             wordBreak: "keep-all",
+            textShadow: "0 2px 16px rgba(0,0,0,0.42)",
           }}
         >
           별자리가 당신을 기억합니다.
@@ -172,14 +175,15 @@ export default function AccountAccessPage() {
             width: "100%",
             padding: "1rem 1.6rem",
             background: "transparent",
-            border: "1px solid rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.16)",
             borderRadius: "0.45rem",
-            color: "rgba(255,255,255,0.45)",
+            color: "rgba(255,255,255,0.78)",
             textDecoration: "none",
             textAlign: "center",
             fontSize: "0.84rem",
             letterSpacing: "0.08em",
             fontWeight: 400,
+            backgroundColor: "rgba(8,8,18,0.16)",
           }}
         >
           아이디로 확인하기
@@ -198,23 +202,25 @@ export default function AccountAccessPage() {
             href="/account-recovery/username"
             style={{
               fontSize: "0.7rem",
-              color: "rgba(255,255,255,0.34)",
+              color: "rgba(255,255,255,0.72)",
               textDecoration: "none",
               letterSpacing: "0.05em",
+              textShadow: "0 2px 12px rgba(0,0,0,0.35)",
             }}
           >
             아이디 찾기
           </Link>
-          <span aria-hidden="true" style={{ color: "rgba(255,255,255,0.18)", fontSize: "0.68rem" }}>
+          <span aria-hidden="true" style={{ color: "rgba(255,255,255,0.36)", fontSize: "0.68rem" }}>
             ·
           </span>
           <Link
             href="/account-recovery/password"
             style={{
               fontSize: "0.7rem",
-              color: "rgba(255,255,255,0.34)",
+              color: "rgba(255,255,255,0.72)",
               textDecoration: "none",
               letterSpacing: "0.05em",
+              textShadow: "0 2px 12px rgba(0,0,0,0.35)",
             }}
           >
             비밀번호 재설정
@@ -226,9 +232,10 @@ export default function AccountAccessPage() {
           style={{
             marginTop: "0.35rem",
             fontSize: "0.72rem",
-            color: "rgba(255,255,255,0.22)",
+            color: "rgba(255,255,255,0.7)",
             textDecoration: "none",
             letterSpacing: "0.05em",
+            textShadow: "0 2px 12px rgba(0,0,0,0.35)",
           }}
         >
           ← 처음으로

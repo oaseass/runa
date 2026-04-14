@@ -7,7 +7,7 @@
     },
     {
       "path": "/api/push/daily",
-      "schedule": "0 1 * * *"
+      "schedule": "*/30 * * * *"
     }
   ]
 }

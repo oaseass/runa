@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import NativeAndroidUpdateGate from "@/components/NativeAndroidUpdateGate";
 import NativePushBootstrap from "@/components/NativePushBootstrap";
 import SharePromptOverlay from "@/components/SharePromptOverlay";
 import TrackPageView from "@/components/TrackPageView";
@@ -26,9 +27,9 @@ export const metadata: Metadata = {
   title: "LUNA",
   description: "LUNA onboarding",
   icons: {
-    icon: "/luna-icon.svg",
-    apple: "/luna-icon.svg",
-    shortcut: "/luna-icon.svg",
+    icon: "/luna/assets/costar/bg/costar_icon.png",
+    apple: "/luna/assets/costar/bg/costar_icon.png",
+    shortcut: "/luna/assets/costar/bg/costar_icon.png",
   },
 };
 
@@ -41,6 +42,7 @@ export default function RootLayout({
     <html lang="ko" className={`${pretendard.variable} ${ibmPlexMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <TrackPageView />
+        <NativeAndroidUpdateGate />
         <NativePushBootstrap />
         {children}
         <SharePromptOverlay />

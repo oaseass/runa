@@ -3,6 +3,7 @@ import { getTodayInterpretationForUser } from "./chart-runtime";
 import {
   claimPushDelivery,
   disablePushDevice,
+  listEnabledPushTargets,
   listAnalysisDonePushTargets,
   listDailyReadingPushTargets,
   markPushDeliveryResult,
@@ -387,4 +388,48 @@ export async function sendAnalysisDonePush(input: {
   }
 
   return { sent, failed, alreadyClaimed };
+}
+
+export async function sendPushTestToUser(input: {
+  userId: string;
+  title?: string;
+  body?: string;
+  deepLink?: string;
+}): Promise<{ devices: number; sent: number; failed: number; invalidated: number }> {
+  const title = compactText(input.title || "루나 테스트 알림", 56);
+  const body = compactText(input.body || "지금 이 알림이 보이면 기기 등록과 FCM 발송이 연결된 상태예요.", 110);
+  const deepLink = input.deepLink?.trim() || "/home?campaign=push_test";
+  const targets = listEnabledPushTargets(input.userId);
+
+  let sent = 0;
+  let failed = 0;
+  let invalidated = 0;
+
+  for (const target of targets) {
+    const result = await sendFcmMessage({
+      token: target.token,
+      title,
+      body,
+      deepLink,
+      campaign: "test",
+    });
+
+    if (result.ok) {
+      sent += 1;
+      continue;
+    }
+
+    failed += 1;
+    if (result.invalidToken) {
+      disablePushDevice(target.deviceId, result.body);
+      invalidated += 1;
+    }
+  }
+
+  return {
+    devices: targets.length,
+    sent,
+    failed,
+    invalidated,
+  };
 }

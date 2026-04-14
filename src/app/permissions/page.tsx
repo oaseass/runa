@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { useRouter } from "next/navigation";
 import { getAccountDraft } from "@/lib/onboarding/account-draft-storage";
 
@@ -78,14 +79,23 @@ export default function PermissionsPage() {
     const globalScope = window as typeof window & {
       Capacitor?: {
         isNativePlatform?: () => boolean;
+        getPlatform?: () => string;
         Plugins?: Record<string, unknown>;
       };
     };
 
+    const capacitorRuntime = Capacitor as unknown as NonNullable<typeof globalScope.Capacitor>;
+    const capacitor = globalScope.Capacitor ?? capacitorRuntime;
+    const looksNative =
+      capacitor?.isNativePlatform?.() ||
+      capacitor?.getPlatform?.() === "ios" ||
+      capacitor?.getPlatform?.() === "android" ||
+      Boolean(capacitor?.Plugins?.Contacts);
+
     // Native integration point (Capacitor/React Native bridge).
-    if (globalScope.Capacitor?.isNativePlatform?.()) {
+    if (looksNative) {
       try {
-        const plugin = globalScope.Capacitor.Plugins?.Contacts;
+        const plugin = capacitor?.Plugins?.Contacts;
 
         if (
           plugin &&

@@ -4,7 +4,8 @@ import { cookies } from "next/headers";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
 import BottomNav from "@/components/BottomNav";
 import BackButton from "@/components/BackButton";
-import { getPaidProductIds, getLatestPaidOrderByProduct, type ProductId } from "@/lib/server/order-store";
+import { getLatestPaidOrderByProduct, type ProductId } from "@/lib/server/order-store";
+import { getUnifiedPurchaseStateSafe } from "@/lib/server/purchase-state";
 import { devPurchaseAction } from "./_actions/devPurchaseAction";
 
 // ── Zodiac sign list ───────────────────────────────────────────────────────────
@@ -30,18 +31,30 @@ export default async function StorePage() {
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   const claims = verifySessionToken(token);
-  const paidIds = claims ? getPaidProductIds(claims.userId) : new Set<string>();
+  const purchaseState = claims ? getUnifiedPurchaseStateSafe(claims.userId) : null;
   const isDevSkip = process.env.SKIP_PAYMENT === "true" || process.env.NEXT_PUBLIC_SKIP_PAYMENT === "true";
 
-  function resultHref(productId: ProductId): string {
+  function resultHref(productIds: ProductId[], fallbackHref: string): string {
     if (!claims) return "/store";
-    const order = getLatestPaidOrderByProduct(claims.userId, productId);
-    return order ? `/store/report/${order.id}` : "/store";
+    try {
+      for (const productId of productIds) {
+        const order = getLatestPaidOrderByProduct(claims.userId, productId);
+        if (order) {
+          return `/store/report/${order.id}`;
+        }
+      }
+    } catch (error) {
+      console.error("[store] resultHref fallback", error);
+    }
+
+    return fallbackHref;
   }
 
-  const yearlyPaid     = paidIds.has("yearly");
-  const areaPaid       = paidIds.has("area");
-  const membershipPaid = paidIds.has("membership");
+  const yearlyPaid = purchaseState?.annualReportOwned ?? false;
+  const areaPaid = purchaseState?.areaReportOwned ?? false;
+  const membershipPaid = purchaseState?.isVip ?? false;
+  const hasVoidCredits = (purchaseState?.voidCredits ?? 0) > 0;
+  const voidEntryHref = isDevSkip || hasVoidCredits ? "/void" : "/void?paywall=1";
 
   return (
     <main className="screen luna-article-screen" aria-label="Shop">
@@ -95,7 +108,7 @@ export default async function StorePage() {
             )}
 
             {/* 별에게 묻다 */}
-            <Link href="/void" className="lsh-row">
+            <Link href={voidEntryHref} className="lsh-row">
               <Image src="/luna/assets/costar/cutouts/animated_cutout_05.webp" alt="" width={56} height={56} className="lsh-row-img" unoptimized />
               <div className="lsh-row-body">
                 <p className="lsh-row-title">별에게 묻다</p>
@@ -116,7 +129,7 @@ export default async function StorePage() {
 
             {/* 연간 리포트 */}
             {yearlyPaid ? (
-              <Link href={resultHref("yearly")} className="lsh-row">
+              <Link href={resultHref(["annual_report", "yearly"], "/store/report/yearly")} className="lsh-row">
                 <Image src="/luna/assets/costar/cutouts/animated_cutout_10.webp" alt="" width={56} height={56} className="lsh-row-img" unoptimized />
                 <div className="lsh-row-body">
                   <p className="lsh-row-title">연간 리포트</p>
@@ -149,7 +162,7 @@ export default async function StorePage() {
 
             {/* 별 지도 해석 (area report) */}
             {areaPaid ? (
-              <Link href={resultHref("area")} className="lsh-row">
+              <Link href={resultHref(["area_reading", "area"], "/store/report/area")} className="lsh-row">
                 <Image src="/luna/assets/costar/cutouts/animated_cutout_08.webp" alt="" width={56} height={56} className="lsh-row-img" unoptimized />
                 <div className="lsh-row-body">
                   <p className="lsh-row-title">별 지도 해석</p>

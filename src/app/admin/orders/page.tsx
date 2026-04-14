@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAdminAuth } from "@/lib/server/admin-session";
 import { getAdminOrdersFiltered } from "@/lib/server/admin-data";
 import { refundOrderAction } from "./_actions/refundOrderAction";
@@ -219,12 +220,12 @@ export default async function AdminOrdersPage({
             적용
           </button>
           {(statusFilter || productFilter) && (
-            <a
+            <Link
               href="/admin/orders"
               style={{ fontSize: "0.78rem", color: "#6b7280", textDecoration: "none" }}
             >
               초기화
-            </a>
+            </Link>
           )}
         </form>
 

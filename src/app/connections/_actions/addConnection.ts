@@ -134,19 +134,24 @@ export async function addConnectionAction(formData: FormData): Promise<void> {
   }
 
   // 4. Save connection
-  const conn = createConnection({
-    ownerUserId: userId,
-    name: rawName,
-    birthDate,
-    birthHour,
-    birthMinute,
-    birthLatitude,
-    birthLongitude,
-    birthTimezone,
-    birthUtcDatetime,
-    timeKnown,
-    chartJson,
-  });
+  let conn;
+  try {
+    conn = await createConnection({
+      ownerUserId: userId,
+      name: rawName,
+      birthDate,
+      birthHour,
+      birthMinute,
+      birthLatitude,
+      birthLongitude,
+      birthTimezone,
+      birthUtcDatetime,
+      timeKnown,
+      chartJson,
+    });
+  } catch {
+    redirect("/connections/add?error=save");
+  }
 
   // 5. Redirect to insight page
   redirect(`/connections/insight/${conn.id}`);

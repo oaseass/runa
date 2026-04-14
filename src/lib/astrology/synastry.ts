@@ -294,6 +294,109 @@ function pairNote(a: PlanetName, b: PlanetName, aspect: string): string {
   return "두 행성이 강하게 결합됩니다.";
 }
 
+const PLANET_KO: Record<PlanetName, string> = {
+  Sun: "태양",
+  Moon: "달",
+  Mercury: "수성",
+  Venus: "금성",
+  Mars: "화성",
+  Jupiter: "목성",
+  Saturn: "토성",
+  Uranus: "천왕성",
+  Neptune: "해왕성",
+  Pluto: "명왕성",
+};
+
+const ASPECT_KO: Record<string, string> = {
+  conjunction: "합",
+  sextile: "육분",
+  square: "긴장",
+  trine: "조화",
+  opposition: "대립",
+};
+
+function aspectSummary(aspect: CrossAspect | null): string | null {
+  if (!aspect) {
+    return null;
+  }
+
+  const planetA = PLANET_KO[aspect.planetA] ?? aspect.planetA;
+  const planetB = PLANET_KO[aspect.planetB] ?? aspect.planetB;
+  const aspectKo = ASPECT_KO[aspect.aspect] ?? aspect.aspect;
+  return `${planetA}와 ${planetB}의 ${aspectKo}`;
+}
+
+function aspectDetailSentence(aspect: CrossAspect | null): string {
+  if (!aspect) {
+    return "지금 보이는 흐름은 한두 개의 포인트보다 전체적인 패턴의 평균에서 나온 결과입니다.";
+  }
+
+  const summary = aspectSummary(aspect);
+  const orb = aspect.orb.toFixed(1);
+  return `특히 ${summary}이 핵심 축으로 작동하고 있고, 오차가 ${orb}°로 비교적 가까워 실제 관계 체감에도 영향을 크게 줄 가능성이 높습니다. ${aspect.note}`;
+}
+
+function categoryAdvice(key: CategoryKey, score: number, topAspect: CrossAspect | null): string {
+  const tone = topAspect?.tone ?? "neutral";
+
+  if (key === "resonance") {
+    if (score >= 65) {
+      return tone === "harmony"
+        ? "서로를 억지로 맞추기보다 자연스럽게 반응하는 방식을 믿어도 되는 조합입니다. 가까워질수록 편안함과 끌림이 함께 커질 가능성이 큽니다."
+        : "끌림은 분명하지만 그만큼 예민함도 함께 살아나는 조합입니다. 감정이 올라오는 순간의 말투와 속도를 조절하면 관계의 장점이 훨씬 또렷해집니다.";
+    }
+
+    if (score >= 38) {
+      return "첫인상보다 시간이 지나며 결이 맞아가는 타입에 가깝습니다. 서로가 편한 애정 표현과 거리감을 빨리 파악할수록 관계의 온도가 안정됩니다.";
+    }
+
+    return "자연발생적인 끌림보다 이해와 선택이 중요한 관계입니다. 그래서 더 느리지만, 반대로 어떤 방식이 통하는지 찾으면 관계의 규칙이 분명해질 수 있습니다.";
+  }
+
+  if (key === "communication") {
+    if (score >= 65) {
+      return "대화가 관계를 살리는 축입니다. 일상적인 대화량이 많을수록 오해가 줄고, 생각을 설명하는 과정 자체가 친밀감을 키우는 방식으로 작동할 가능성이 큽니다.";
+    }
+
+    if (score >= 38) {
+      return "기본적인 대화는 이어지지만, 감정이 실린 주제나 속도감 있는 상황에서는 해석 차이가 생길 수 있습니다. 결론만 말하기보다 맥락을 먼저 공유하면 훨씬 부드러워집니다.";
+    }
+
+    return "말의 의도와 받아들이는 방식이 다를 수 있는 구조입니다. 그래서 짧은 반응보다 확인 질문, 요약, 재진술 같은 방식이 관계 유지에 실제로 도움이 됩니다.";
+  }
+
+  if (key === "tension") {
+    if (score >= 65) {
+      return "긴장이 높다는 건 나쁘다는 뜻보다, 서로를 가만히 두지 않는다는 뜻에 가깝습니다. 이 관계는 감정이 격해질 때 멈추는 규칙을 미리 정해두면 훨씬 건강하게 오래 갈 수 있습니다.";
+    }
+
+    if (score >= 38) {
+      return "결정적인 파열보다는 잔잔한 마찰이 반복될 가능성이 있습니다. 작은 불편을 넘기지 않고 초기에 말하는 습관이 쌓이면 오히려 관계의 안정감이 커집니다.";
+    }
+
+    return "전반적으로 큰 충돌보다 흐름이 부드러운 편입니다. 다만 갈등이 적은 만큼 중요한 문제를 미루는 방식으로 가면 답답함이 누적될 수 있으니, 필요한 순간에는 분명하게 말하는 편이 좋습니다.";
+  }
+
+  if (score >= 65) {
+    return "둘이 함께 있을 때 각자의 가능성이 확장되는 패턴이 분명합니다. 단기 감정보다 장기 방향을 함께 이야기할수록 이 관계의 가치가 더 크게 드러날 수 있습니다.";
+  }
+
+  if (score >= 38) {
+    return "성장 에너지는 있지만 자동으로 커지는 관계라기보다는, 함께 방향을 만들 때 힘이 붙는 관계에 가깝습니다. 공동 목표나 같이 배우는 경험이 중요하게 작동할 수 있습니다.";
+  }
+
+  return "이 관계가 성장으로 이어지려면 의도적인 합의가 먼저 필요합니다. 그냥 흘러가는 관계로 두기보다, 무엇을 함께 만들고 싶은지 분명히 할수록 의미가 생깁니다.";
+}
+
+function buildCategoryBody(
+  baseBody: string,
+  key: CategoryKey,
+  score: number,
+  topAspect: CrossAspect | null,
+): string {
+  return `${baseBody} ${aspectDetailSentence(topAspect)} ${categoryAdvice(key, score, topAspect)}`;
+}
+
 // ── Planets included in synastry ──────────────────────────────────────────────
 
 const SYNASTRY_PLANETS: PlanetName[] = [
@@ -511,6 +614,8 @@ function buildSynthesis(
   const cats = [resonance, communication, growth].sort((a, b) => b.score - a.score);
   const dominant = cats[0];
   const hasTension = tension.score >= 65;
+  const dominantAspect = dominant.topAspect ? aspectSummary(dominant.topAspect) : null;
+  const tensionAspect = tension.topAspect ? aspectSummary(tension.topAspect) : null;
 
   let synthesis: string;
   let keyPhrase: string;
@@ -540,6 +645,16 @@ function buildSynthesis(
     keyPhrase = "이해와 조율이 필요한 관계";
   }
 
+  if (dominantAspect) {
+    synthesis += ` 현재 이 관계를 가장 강하게 설명하는 축은 ${dominantAspect}이며, 이 포인트가 두 사람 사이의 기본 온도와 반응 속도를 크게 결정합니다.`;
+  }
+
+  if (hasTension && tensionAspect) {
+    synthesis += ` 동시에 ${tensionAspect}도 민감하게 살아 있어, 가까워질수록 편안함만이 아니라 조율의 필요도 함께 커질 수 있습니다.`;
+  } else if (!hasTension) {
+    synthesis += " 큰 충돌보다 흐름과 적응이 먼저 오는 구조라서, 시간을 들일수록 관계의 장점이 더 선명하게 보일 가능성이 큽니다.";
+  }
+
   return { synthesis, keyPhrase };
 }
 
@@ -563,19 +678,19 @@ export function computeSynastry(
   const { score: gScore, topAspect: gTop } = scoreCategoryPositive(crossAspects, "growth");
 
   const resonance: SynastryCategory = {
-    key: "resonance", label: "공명",
+    key: "resonance", label: "관계",
     score: rScore,
     tone: categoryTone(rScore, "resonance"),
     headline: RESONANCE_TEXT[level(rScore)].headline,
-    body: RESONANCE_TEXT[level(rScore)].body,
+    body: buildCategoryBody(RESONANCE_TEXT[level(rScore)].body, "resonance", rScore, rTop),
     topAspect: rTop,
   };
   const communication: SynastryCategory = {
-    key: "communication", label: "소통",
+    key: "communication", label: "대화",
     score: cScore,
     tone: categoryTone(cScore, "communication"),
     headline: COMMUNICATION_TEXT[level(cScore)].headline,
-    body: COMMUNICATION_TEXT[level(cScore)].body,
+    body: buildCategoryBody(COMMUNICATION_TEXT[level(cScore)].body, "communication", cScore, cTop),
     topAspect: cTop,
   };
   const tension: SynastryCategory = {
@@ -583,7 +698,7 @@ export function computeSynastry(
     score: tScore,
     tone: categoryTone(tScore, "tension"),
     headline: TENSION_TEXT[level(tScore)].headline,
-    body: TENSION_TEXT[level(tScore)].body,
+    body: buildCategoryBody(TENSION_TEXT[level(tScore)].body, "tension", tScore, tTop),
     topAspect: tTop,
   };
   const growth: SynastryCategory = {
@@ -591,7 +706,7 @@ export function computeSynastry(
     score: gScore,
     tone: categoryTone(gScore, "growth"),
     headline: GROWTH_TEXT[level(gScore)].headline,
-    body: GROWTH_TEXT[level(gScore)].body,
+    body: buildCategoryBody(GROWTH_TEXT[level(gScore)].body, "growth", gScore, gTop),
     topAspect: gTop,
   };
 

@@ -1,4 +1,5 @@
-﻿import { requireAdminAuth } from "@/lib/server/admin-session";
+﻿import Link from "next/link";
+import { requireAdminAuth } from "@/lib/server/admin-session";
 import { getAdminStats } from "@/lib/server/admin-stats";
 import type { DailyPoint } from "@/lib/server/admin-stats";
 
@@ -308,12 +309,12 @@ export default async function AdminDashboard() {
                       {fmt(s.orders.failed)}{"\uac74"}
                     </span>
                   </div>
-                  <a
+                  <Link
                     href="/admin/orders?status=failed"
                     style={{ marginLeft: "auto", fontSize: "0.75rem", color: "#2563eb", textDecoration: "none" }}
                   >
                     {"\ud655\uc778 \u2192"}
-                  </a>
+                  </Link>
                 </div>
               )}
               {s.void.failed > 0 && (

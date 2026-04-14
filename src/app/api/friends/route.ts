@@ -23,8 +23,8 @@ export async function GET(request: Request) {
   const typeParam = searchParams.get("type") as FriendshipType | null;
   const type = typeParam === "eros" ? "eros" : typeParam === "friend" ? "friend" : undefined;
 
-  const friends  = listFriends(claims.userId, type);
-  const pending  = listPendingReceived(claims.userId);
+  const friends  = await listFriends(claims.userId, type);
+  const pending  = await listPendingReceived(claims.userId);
 
   return NextResponse.json({ friends, pending });
 }
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
 
   const type: FriendshipType = body.type === "eros" ? "eros" : "friend";
 
-  const friendshipId = addFriend(claims.userId, addresseeId, type, true);
+  const friendshipId = await addFriend(claims.userId, addresseeId, type, true);
 
   logFriendEvent(claims.userId, "friend_request_sent", {
     addresseeId,

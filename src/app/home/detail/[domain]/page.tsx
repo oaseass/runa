@@ -124,6 +124,10 @@ function DomainDetailPageInner() {
           const [r1] = await Promise.all([
             fetch(`/api/chart/today-deep${dateQuery}`, { cache: "no-store" }),
           ]);
+          if (r1.status === 402) {
+            router.replace("/store/checkout?product=membership");
+            return;
+          }
           if (r1.ok) {
             const report = (await r1.json() as { report: TodayDeepReport }).report;
             setTodayReport(report);
@@ -138,13 +142,17 @@ function DomainDetailPageInner() {
             fetch(`/api/chart/domains${dateQuery}`,          { cache: "no-store" }),
             fetch(`/api/chart/domain-detail${detailQuery}`,  { cache: "no-store" }),
           ]);
+          if (r4.status === 402) {
+            router.replace("/store/checkout?product=membership");
+            return;
+          }
           if (r1.ok) setInterp((await r1.json() as { interpretation: TransitInterpretation }).interpretation);
           if (r2.ok) setDomains((await r2.json() as { domains: DomainReading[] }).domains);
           if (r4.ok) setDomainDetail((await r4.json() as { detail: DomainDetail }).detail);
         }
       } catch { /* silent */ }
     })();
-  }, [dateQuery, domainKey, isToday]);
+  }, [dateQuery, domainKey, isToday, router]);
 
   /* ?�?� derived values (non-today only) ?�?� */
   const dr = domains?.find((d) => d.domain === meta.apiDomain);

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LUNA 관리자</string>
+    <string name="title_activity_main">LUNA 관리자</string>
+    <string name="package_name">com.luna.admin</string>
+    <string name="custom_url_scheme">com.luna.admin</string>
+</resources>

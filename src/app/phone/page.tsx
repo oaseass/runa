@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { COUNTRY_DIAL_OPTIONS, DEFAULT_COUNTRY } from "@/lib/onboarding/country-calling-codes";
 import { getBirthPlaceSelection } from "@/lib/onboarding/birth-place-storage";
 import {
@@ -17,12 +16,19 @@ function PhonePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isLoginFlow = searchParams.get("flow") === "login";
-  const [selectedCountryCode, setSelectedCountryCode] = useState(DEFAULT_COUNTRY.dialCode);
+  const prefilledCountryCode = searchParams.get("countryCode") ?? DEFAULT_COUNTRY.dialCode;
+  const prefilledNationalNumber = sanitizeNationalNumber(searchParams.get("nationalNumber") ?? "");
+  const [selectedCountryCode, setSelectedCountryCode] = useState(prefilledCountryCode);
   const [countrySheetOpen, setCountrySheetOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(prefilledNationalNumber);
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedCountryCode(prefilledCountryCode);
+    setPhoneNumber(prefilledNationalNumber);
+  }, [prefilledCountryCode, prefilledNationalNumber]);
 
   useEffect(() => {
     let cancelled = false;
@@ -180,6 +186,13 @@ function PhonePageInner() {
     })();
   }
 
+  function handleLoginRedirect() {
+    const params = new URLSearchParams({ flow: "login" });
+    params.set("countryCode", selectedCountryCode);
+    params.set("nationalNumber", normalizedNationalNumber);
+    router.push(`/phone?${params.toString()}`);
+  }
+
   return (
     <main className="screen screen-dark">
       <section className="step-wrap step-wrap-dark phone-step phone-step-dark" aria-label="Phone step">
@@ -223,9 +236,14 @@ function PhonePageInner() {
           </p>
           {errorMessage ? <p className="dark-copy">{errorMessage}</p> : null}
           {errorMessage === "이미 가입된 번호예요. 로그인해 주세요." ? (
-            <Link href="/phone?flow=login" className="cta cta-solid" style={{ marginTop: "0.5rem" }}>
+            <button
+              type="button"
+              className="cta cta-solid"
+              style={{ marginTop: "0.5rem" }}
+              onClick={handleLoginRedirect}
+            >
               로그인하기
-            </Link>
+            </button>
           ) : null}
         </div>
 

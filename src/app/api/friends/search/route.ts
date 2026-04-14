@@ -36,14 +36,14 @@ export async function GET(request: Request) {
   if (isPhone) {
     const normalized = normalizePhone(raw);
     if (!normalized) return NextResponse.json({ users: [] });
-    const found = findUserByPhone(normalized, claims.userId);
+    const found = await findUserByPhone(normalized, claims.userId);
     if (found) users = [found];
   } else {
-    users = searchUsersByUsername(raw, claims.userId);
+    users = await searchUsersByUsername(raw, claims.userId);
   }
 
-  const withStatus = users.map((u) => {
-    const ship = getFriendship(claims.userId, u.id);
+  const withStatus = await Promise.all(users.map(async (u) => {
+    const ship = await getFriendship(claims.userId, u.id);
     let friendshipStatus: string = "not_connected";
     if (ship) {
       if (ship.status === "accepted") {
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
       }
     }
     return { id: u.id, username: u.username, friendshipStatus };
-  });
+  }));
 
   return NextResponse.json({ users: withStatus });
 }

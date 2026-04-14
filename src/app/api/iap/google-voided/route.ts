@@ -87,7 +87,7 @@ async function fetchVoidedPurchases(limit = 100): Promise<GoogleVoidedPurchase[]
     return [];
   }
 
-  const packageName = process.env.GOOGLE_PACKAGE_NAME?.trim() || "com.luna.app";
+  const packageName = process.env.GOOGLE_PACKAGE_NAME?.trim() || "com.lunastar.app";
   const url = new URL(
     `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${packageName}/purchases/voidedpurchases`,
   );

@@ -208,18 +208,18 @@ const DAILY_MOON_ENERGY: Record<SignName, string> = {
 // Moon-sign headline pool: 3 variants per sign, selected by the Moon's 10°-band within the sign.
 // Band 0: 0–9°, Band 1: 10–19°, Band 2: 20–29°. Shifts ~every 20 h → adjacent days in same sign diverge.
 const HEADLINE_BY_MOON_SIGN_POOL: Record<SignName, [string, string, string]> = {
-  Aries:       ["오늘은 충동과 시작의 에너지가 흐릅니다.", "오늘은 먼저 움직이는 쪽이 유리합니다.", "오늘은 두려움 없이 시작할 수 있는 날입니다."],
-  Taurus:      ["오늘은 안정과 감각을 따르세요.", "오늘은 천천히 쌓아가는 것이 힘이 됩니다.", "오늘은 감각과 현실이 나침반입니다."],
-  Gemini:      ["오늘은 연결과 다양성이 활발합니다.", "오늘은 정보의 흐름이 열려 있습니다.", "오늘은 아이디어가 여러 방향으로 뻗습니다."],
-  Cancer:      ["오늘은 감정이 흐름을 만듭니다.", "오늘은 내면의 목소리가 크게 들립니다.", "오늘은 돌보는 에너지가 중심에 있습니다."],
-  Leo:         ["오늘은 표현 에너지가 높습니다.", "오늘은 무대가 당신을 기다립니다.", "오늘은 자신을 드러내는 힘이 있습니다."],
-  Virgo:       ["오늘은 정밀함과 분석이 유리합니다.", "오늘은 세부사항이 전체를 만듭니다.", "오늘은 질서에서 명확함이 나옵니다."],
-  Libra:       ["오늘은 균형과 조율이 중심입니다.", "오늘은 판단보다 조율이 먼저입니다.", "오늘은 관계에서 조화를 찾는 날입니다."],
-  Scorpio:     ["오늘은 심층 에너지가 흐릅니다.", "오늘은 표면 아래를 읽는 날입니다.", "오늘은 직관이 진실을 가리킵니다."],
-  Sagittarius: ["오늘은 탐색과 확장의 흐름입니다.", "오늘은 큰 그림이 방향을 줍니다.", "오늘은 의미를 향해 나아갑니다."],
-  Capricorn:   ["오늘은 목표와 구조가 힘을 줍니다.", "오늘은 결과에 초점을 맞추세요.", "오늘은 기반이 단단해지는 날입니다."],
-  Aquarius:    ["오늘은 독립과 혁신이 활발합니다.", "오늘은 패턴 밖에서 답을 찾습니다.", "오늘은 비관습적 관점이 유리합니다."],
-  Pisces:      ["오늘은 감수성과 직관이 흐릅니다.", "오늘은 경계가 열리는 날입니다.", "오늘은 느끼는 것이 나침반이 됩니다."],
+  Aries:       ["오늘은 망설임보다 선제 행동이 먹힙니다.", "머뭇거리면 에너지가 새어 나갑니다. 먼저 움직이세요.", "오늘 시작하지 않으면, 마음은 더 시끄러워집니다."],
+  Taurus:      ["오늘은 느리게 가도 중심을 뺏기지 않는 쪽이 이깁니다.", "안정은 핑계가 아니라 전략이어야 합니다.", "감각이 맞지 않는 것은 억지로 붙잡지 마세요."],
+  Gemini:      ["오늘은 말 한마디가 흐름을 바꿉니다.", "생각이 많아질수록 핵심 하나를 고르는 용기가 필요합니다.", "연결은 많아지지만, 진짜 중요한 대화는 따로 있습니다."],
+  Cancer:      ["오늘은 감정을 무시하면 하루가 더 꼬입니다.", "돌봄이 필요한 건 남이 아니라 당신일 수 있습니다.", "마음이 예민한 날입니다. 억누르지 말고 다뤄야 합니다."],
+  Leo:         ["오늘은 존재감을 숨길수록 답답해집니다.", "무대는 이미 열려 있습니다. 작아지지 마세요.", "인정 욕구를 부정하지 말고, 제대로 써먹으세요."],
+  Virgo:       ["오늘은 대충 넘긴 것이 가장 크게 돌아옵니다.", "세부를 다듬는 태도가 오늘 판을 정리합니다.", "정리할수록 마음도 조용해집니다."],
+  Libra:       ["오늘은 모두를 만족시키려다 본심을 놓치기 쉽습니다.", "조화도 중요하지만, 애매함을 오래 끌수록 더 피곤해집니다.", "관계의 균형은 침묵이 아니라 선택에서 나옵니다."],
+  Scorpio:     ["오늘은 겉말보다 숨긴 진심이 더 크게 들립니다.", "불편한 진실을 피하면 관계가 더 탁해집니다.", "표면은 조용해도, 핵심은 이미 흔들리고 있습니다."],
+  Sagittarius: ["오늘은 좁은 답보다 큰 맥락이 필요합니다.", "답답하다면 판을 넓혀야 할 때입니다.", "의미 없는 반복은 오늘 유독 견디기 어렵습니다."],
+  Capricorn:   ["오늘은 결과 없는 분주함이 바로 들통납니다.", "기반을 다시 세우면 불안도 조용해집니다.", "해야 할 것을 먼저 끝내면 마음이 덜 흔들립니다."],
+  Aquarius:    ["오늘은 평범한 해답이 잘 먹히지 않습니다.", "거리 두기가 차가움은 아닙니다. 판단을 선명하게 만드는 방식입니다.", "어긋나 보여도, 당신 방식이 더 정확할 수 있습니다."],
+  Pisces:      ["오늘은 예민함이 약점이 아니라 레이더입니다.", "분위기에 휩쓸리지 말고, 감각을 해석하세요.", "경계가 흐려질수록 나를 먼저 붙잡아야 합니다."],
 };
 
 // Transit-driven headline overrides — score-based, highest-scoring active transit wins.
@@ -231,7 +231,7 @@ const TRANSIT_HEADLINE_MAP: Array<{
   // ── Moon transits ──────────────────────────────────────────────────────────
   { transitPlanet: "Moon", natalPlanet: "Sun",     aspect: "conjunction", orbMax: 3, headline: "자아와 감정이 하나가 되는 날입니다." },
   { transitPlanet: "Moon", natalPlanet: "Moon",    aspect: "conjunction", orbMax: 3, headline: "감정의 기억이 다시 활성화됩니다." },
-  { transitPlanet: "Moon", natalPlanet: "Venus",   aspect: "conjunction", orbMax: 3, headline: "관계와 감수성이 오늘 중심입니다." },
+  { transitPlanet: "Moon", natalPlanet: "Venus",   aspect: "conjunction", orbMax: 3, headline: "마음이 먼저 움직입니다. 오늘 끌림은 꽤 솔직합니다." },
   { transitPlanet: "Moon", natalPlanet: "Mars",    aspect: "conjunction", orbMax: 3, headline: "감정과 행동 에너지가 연결됩니다." },
   { transitPlanet: "Moon", natalPlanet: "Sun",     aspect: "opposition",  orbMax: 3, headline: "감정과 의지가 다른 방향을 향합니다." },
   { transitPlanet: "Moon", natalPlanet: "Sun",     aspect: "square",      orbMax: 3, headline: "내면의 긴장이 행동 충동을 만듭니다." },
@@ -243,13 +243,13 @@ const TRANSIT_HEADLINE_MAP: Array<{
   { transitPlanet: "Moon", natalPlanet: "Mercury", aspect: "conjunction", orbMax: 3, headline: "직관과 언어가 만납니다. 느낀 것을 표현하기 좋은 날입니다." },
   { transitPlanet: "Moon", natalPlanet: "Mercury", aspect: "trine",       orbMax: 4, headline: "감정과 생각이 연결됩니다. 소통이 자연스러운 날입니다." },
   { transitPlanet: "Moon", natalPlanet: "Mars",    aspect: "trine",       orbMax: 4, headline: "감정과 행동이 일치합니다. 원하는 것으로 움직이기 좋습니다." },
-  { transitPlanet: "Moon", natalPlanet: "Venus",   aspect: "opposition",  orbMax: 3, headline: "관계에서 감정의 균형이 필요합니다. 양쪽을 조율하세요." },
-  { transitPlanet: "Moon", natalPlanet: "Venus",   aspect: "trine",       orbMax: 4, headline: "따뜻한 감정 에너지가 관계를 부드럽게 합니다." },
+  { transitPlanet: "Moon", natalPlanet: "Venus",   aspect: "opposition",  orbMax: 3, headline: "마음과 관계의 속도가 어긋납니다. 애매하게 넘길수록 더 꼬입니다." },
+  { transitPlanet: "Moon", natalPlanet: "Venus",   aspect: "trine",       orbMax: 4, headline: "공감이 부드럽게 연결됩니다. 가까워질 이유가 충분합니다." },
   { transitPlanet: "Moon", natalPlanet: "Jupiter", aspect: "conjunction", orbMax: 4, headline: "감정적 낙관이 높아집니다. 넓은 시야로 하루를 시작하세요." },
   { transitPlanet: "Moon", natalPlanet: "Jupiter", aspect: "square",      orbMax: 3, headline: "과도한 기대가 감정을 흔들 수 있습니다. 현실적으로 조율하세요." },
   { transitPlanet: "Moon", natalPlanet: "Saturn",  aspect: "conjunction", orbMax: 3, headline: "오늘 감정에 진지함이 실립니다. 깊은 것들을 직면하는 날입니다." },
   // ── Sun transits ──────────────────────────────────────────────────────────
-  { transitPlanet: "Sun",  natalPlanet: "Sun",     aspect: "conjunction", orbMax: 5, headline: "태양 귀환 — 새로운 에너지 사이클이 시작됩니다." },
+  { transitPlanet: "Sun",  natalPlanet: "Sun",     aspect: "conjunction", orbMax: 5, headline: "태양 귀환입니다. 예전 버전의 당신은 여기서 끝납니다." },
   { transitPlanet: "Sun",  natalPlanet: "Moon",    aspect: "conjunction", orbMax: 4, headline: "에너지가 내면의 감정 구조를 활성화합니다." },
   { transitPlanet: "Sun",  natalPlanet: "Moon",    aspect: "opposition",  orbMax: 4, headline: "자아 표현과 감정적 욕구 사이에 긴장이 있습니다." },
   // ── Mercury transits ───────────────────────────────────────────────────────
@@ -259,18 +259,18 @@ const TRANSIT_HEADLINE_MAP: Array<{
   { transitPlanet: "Mercury", natalPlanet: "Moon",    aspect: "conjunction", orbMax: 3, headline: "사고와 감정이 연결됩니다. 내면의 이야기를 말로 꺼내보세요." },
   { transitPlanet: "Mercury", natalPlanet: "Moon",    aspect: "trine",       orbMax: 4, headline: "감정을 이해하고 표현하는 능력이 높아집니다." },
   { transitPlanet: "Mercury", natalPlanet: "Moon",    aspect: "square",      orbMax: 3, headline: "생각과 감정 사이에 마찰이 있습니다. 논리가 감정을 무시하지 않도록 하세요." },
-  { transitPlanet: "Mercury", natalPlanet: "Venus",   aspect: "conjunction", orbMax: 3, headline: "말이 관계를 열어주는 날입니다. 감정을 언어로 표현하세요." },
+  { transitPlanet: "Mercury", natalPlanet: "Venus",   aspect: "conjunction", orbMax: 3, headline: "말이 관계를 당깁니다. 돌려 말할수록 힘이 빠집니다." },
   { transitPlanet: "Mercury", natalPlanet: "Mars",    aspect: "conjunction", orbMax: 3, headline: "사고와 행동이 빠르게 연결됩니다. 결정이 명확해집니다." },
   // ── Venus transits ─────────────────────────────────────────────────────────
-  { transitPlanet: "Venus", natalPlanet: "Sun",       aspect: "conjunction", orbMax: 4, headline: "매력과 관계 에너지가 자아와 연결됩니다." },
-  { transitPlanet: "Venus", natalPlanet: "Sun",       aspect: "trine",       orbMax: 4, headline: "자아와 매력이 자연스럽게 빛납니다. 관계에 좋은 에너지입니다." },
-  { transitPlanet: "Venus", natalPlanet: "Sun",       aspect: "square",      orbMax: 4, headline: "관계와 자아 표현 사이에 긴장이 있습니다. 원하는 것을 명확히 하세요." },
-  { transitPlanet: "Venus", natalPlanet: "Sun",       aspect: "opposition",  orbMax: 4, headline: "자아와 관계 사이 균형이 필요합니다. 나와 상대 모두를 고려하세요." },
-  { transitPlanet: "Venus", natalPlanet: "Moon",      aspect: "conjunction", orbMax: 4, headline: "따뜻한 감정 에너지와 관계 조화의 날입니다." },
-  { transitPlanet: "Venus", natalPlanet: "Moon",      aspect: "trine",       orbMax: 4, headline: "감정적 조화로움이 흐릅니다. 사랑과 공감이 자연스럽습니다." },
-  { transitPlanet: "Venus", natalPlanet: "Moon",      aspect: "square",      orbMax: 4, headline: "관계에서 감정적 불일치가 있을 수 있습니다. 원하는 것을 명확히 소통하세요." },
-  { transitPlanet: "Venus", natalPlanet: "Mercury",   aspect: "conjunction", orbMax: 3, headline: "아름다운 말이 관계를 가깝게 합니다. 감사를 표현하세요." },
-  { transitPlanet: "Venus", natalPlanet: "Mars",      aspect: "conjunction", orbMax: 4, headline: "사랑과 욕망이 연결됩니다. 행동하는 열정이 관계를 움직입니다." },
+  { transitPlanet: "Venus", natalPlanet: "Sun",       aspect: "conjunction", orbMax: 4, headline: "매력이 올라옵니다. 숨기려 할수록 더 눈에 띕니다." },
+  { transitPlanet: "Venus", natalPlanet: "Sun",       aspect: "trine",       orbMax: 4, headline: "억지 없이도 끌림이 생깁니다. 편안한 자신감이 통하는 날입니다." },
+  { transitPlanet: "Venus", natalPlanet: "Sun",       aspect: "square",      orbMax: 4, headline: "좋아 보이고 싶은 마음과 진짜 마음이 충돌합니다." },
+  { transitPlanet: "Venus", natalPlanet: "Sun",       aspect: "opposition",  orbMax: 4, headline: "나와 상대의 욕구가 정면으로 마주칩니다. 회피는 더 시끄럽습니다." },
+  { transitPlanet: "Venus", natalPlanet: "Moon",      aspect: "conjunction", orbMax: 4, headline: "마음이 사랑 쪽으로 기울어집니다. 오늘은 숨김이 잘 안 됩니다." },
+  { transitPlanet: "Venus", natalPlanet: "Moon",      aspect: "trine",       orbMax: 4, headline: "다정함이 과장 없이 전달됩니다. 관계가 자연스럽게 풀립니다." },
+  { transitPlanet: "Venus", natalPlanet: "Moon",      aspect: "square",      orbMax: 4, headline: "마음은 원하지만 방식이 엇갈립니다. 감정 번역이 필요한 날입니다." },
+  { transitPlanet: "Venus", natalPlanet: "Mercury",   aspect: "conjunction", orbMax: 3, headline: "말이 관계를 당깁니다. 돌려 말할수록 힘이 빠집니다." },
+  { transitPlanet: "Venus", natalPlanet: "Mars",      aspect: "conjunction", orbMax: 4, headline: "끌림과 욕망이 같은 방향으로 붙습니다. 관계가 뜨거워집니다." },
   // ── Mars transits ──────────────────────────────────────────────────────────
   { transitPlanet: "Mars", natalPlanet: "Sun",        aspect: "conjunction", orbMax: 4, headline: "드라이브와 에너지가 집중됩니다." },
   { transitPlanet: "Mars", natalPlanet: "Sun",        aspect: "square",      orbMax: 4, headline: "좌절이나 긴장을 생산적 에너지로 전환할 수 있습니다." },
@@ -283,24 +283,24 @@ const TRANSIT_HEADLINE_MAP: Array<{
   { transitPlanet: "Mars", natalPlanet: "Venus",      aspect: "conjunction", orbMax: 4, headline: "열정과 매력이 하나로 작동합니다. 관계에서 에너지가 강합니다." },
   { transitPlanet: "Mars", natalPlanet: "Venus",      aspect: "square",      orbMax: 4, headline: "관계에서 갈등이나 긴장이 생길 수 있습니다. 직접 소통으로 해소하세요." },
   // ── Jupiter transits ───────────────────────────────────────────────────────
-  { transitPlanet: "Jupiter", natalPlanet: "Sun",     aspect: "conjunction", orbMax: 5, headline: "확장과 기회의 사이클이 열립니다." },
+  { transitPlanet: "Jupiter", natalPlanet: "Sun",     aspect: "conjunction", orbMax: 5, headline: "새 판이 열립니다. 작게 살기엔 오늘 에너지가 큽니다." },
   { transitPlanet: "Jupiter", natalPlanet: "Sun",     aspect: "trine",       orbMax: 5, headline: "성장과 흐름이 자연스럽게 연결됩니다." },
   { transitPlanet: "Jupiter", natalPlanet: "Moon",    aspect: "conjunction", orbMax: 5, headline: "감정적 풍요로움이 흐릅니다. 낙관적인 에너지가 내면을 채웁니다." },
   { transitPlanet: "Jupiter", natalPlanet: "Moon",    aspect: "trine",       orbMax: 5, headline: "내면에서 확장의 흐름이 느껴집니다. 감정이 넓어지는 날입니다." },
   { transitPlanet: "Jupiter", natalPlanet: "Mercury", aspect: "conjunction", orbMax: 5, headline: "사고와 소통이 확장됩니다. 큰 아이디어가 떠오르는 날입니다." },
   { transitPlanet: "Jupiter", natalPlanet: "Mercury", aspect: "trine",       orbMax: 5, headline: "생각이 넓게 연결됩니다. 통찰과 배움에 좋은 날입니다." },
-  { transitPlanet: "Jupiter", natalPlanet: "Venus",   aspect: "conjunction", orbMax: 5, headline: "관계와 풍요로움이 만납니다. 사랑과 연결에 행운의 흐름이 있습니다." },
+  { transitPlanet: "Jupiter", natalPlanet: "Venus",   aspect: "conjunction", orbMax: 5, headline: "관계가 커집니다. 애매한 끌림도 오늘은 얼굴을 드러냅니다." },
   // ── Saturn transits ────────────────────────────────────────────────────────
-  { transitPlanet: "Saturn", natalPlanet: "Sun",      aspect: "conjunction", orbMax: 4, headline: "구조와 책임이 자아에 집중합니다." },
+  { transitPlanet: "Saturn", natalPlanet: "Sun",      aspect: "conjunction", orbMax: 4, headline: "현실이 당신을 시험합니다. 하지만 이건 축소가 아니라 재정렬입니다." },
   { transitPlanet: "Saturn", natalPlanet: "Sun",      aspect: "trine",       orbMax: 4, headline: "구조와 의지가 자연스럽게 정렬됩니다. 체계적인 진전을 만들기 좋습니다." },
-  { transitPlanet: "Saturn", natalPlanet: "Sun",      aspect: "square",      orbMax: 4, headline: "긴장이 구조를 시험합니다. 책임감 있는 선택이 오늘의 무게입니다." },
+  { transitPlanet: "Saturn", natalPlanet: "Sun",      aspect: "square",      orbMax: 4, headline: "버티는 방식이 낡았다면, 오늘 바로 티가 납니다." },
   { transitPlanet: "Saturn", natalPlanet: "Moon",     aspect: "conjunction", orbMax: 4, headline: "감정에 무게감이 실립니다. 천천히, 진지하게 접근하세요." },
   { transitPlanet: "Saturn", natalPlanet: "Moon",     aspect: "square",      orbMax: 3, headline: "감정적 제한이나 무게감이 있을 수 있습니다." },
   { transitPlanet: "Saturn", natalPlanet: "Moon",     aspect: "trine",       orbMax: 4, headline: "감정적 안정과 현실감이 균형을 이룹니다. 기반이 단단합니다." },
   { transitPlanet: "Saturn", natalPlanet: "Mercury",  aspect: "conjunction", orbMax: 4, headline: "신중한 사고가 중요합니다. 말과 결정에 책임이 따릅니다." },
   { transitPlanet: "Saturn", natalPlanet: "Mercury",  aspect: "square",      orbMax: 4, headline: "표현이 막히거나 무거울 수 있습니다. 핵심만 전달하세요." },
-  { transitPlanet: "Saturn", natalPlanet: "Venus",    aspect: "conjunction", orbMax: 4, headline: "관계에 현실적인 질문이 제기됩니다. 진지한 대화가 필요할 수 있습니다." },
-  { transitPlanet: "Saturn", natalPlanet: "Venus",    aspect: "square",      orbMax: 4, headline: "관계에서 제한이나 거리감이 느껴집니다. 인내가 필요한 시기입니다." },
+  { transitPlanet: "Saturn", natalPlanet: "Venus",    aspect: "conjunction", orbMax: 4, headline: "관계의 진심이 시험대에 오릅니다. 말보다 태도가 증명합니다." },
+  { transitPlanet: "Saturn", natalPlanet: "Venus",    aspect: "square",      orbMax: 4, headline: "관계의 거리감이 핑계처럼 보이지 않는 날입니다." },
 ];
 
 // ── Generic transit headlines: fire for any transit-to-natal aspect ───────────
@@ -312,86 +312,86 @@ const GENERIC_TRANSIT_HEADLINES: Partial<Record<PlanetName, {
 }>> = {
   Moon: {
     soft: [
-      "달이 오늘 차트에 부드러운 흐름을 만들어냅니다.",
-      "감정 에너지가 오늘 자연스러운 방향을 가리킵니다.",
-      "달의 흐름이 오늘 내면의 균형을 지지합니다.",
+      "달이 감정의 진짜 결을 드러냅니다. 못 느낀 척하기 어렵습니다.",
+      "감정 에너지가 오늘 방향을 잡습니다. 마음이 먼저 답을 압니다.",
+      "달의 흐름이 내면을 깨웁니다. 무심한 척해도 몸은 이미 반응합니다.",
     ],
     hard: [
-      "달의 각이 오늘 내면의 마찰을 일으킵니다.",
-      "감정 에너지가 도전을 향하고 있습니다. 의식적으로 조율하세요.",
-      "오늘 달의 긴장이 무언가를 재정렬하도록 요구합니다.",
+      "달의 각이 내면을 건드립니다. 묻어둔 감정일수록 더 크게 올라옵니다.",
+      "감정 에너지가 거칠어집니다. 반응보다 해석이 먼저 필요합니다.",
+      "달의 긴장이 감정을 재정렬하라고 밀어붙입니다. 외면은 오래 못 갑니다.",
     ],
   },
   Sun: {
     soft: [
-      "태양 에너지가 오늘 차트에 활력을 불어넣습니다.",
-      "의지와 자아의 흐름이 오늘 방향을 밝혀줍니다.",
-      "태양의 조화가 오늘 잠재된 힘을 활성화합니다.",
+      "태양 에너지가 올라옵니다. 작아지기엔 오늘 기세가 큽니다.",
+      "의지와 자아의 흐름이 선명합니다. 누구 기준으로 움직일지 정해야 합니다.",
+      "태양의 조화가 중심을 밝힙니다. 당신 쪽으로 판을 당겨오세요.",
     ],
     hard: [
-      "태양의 긴장이 오늘 핵심을 시험합니다.",
-      "의지와 저항이 오늘 마주칩니다. 방향 점검이 필요합니다.",
-      "태양이 도전을 통해 명확함을 요구하는 날입니다.",
+      "태양의 긴장이 핵심을 시험합니다. 대충 잡은 중심은 바로 흔들립니다.",
+      "의지와 저항이 맞붙습니다. 자존심보다 방향 점검이 먼저입니다.",
+      "태양이 도전을 통해 명확함을 강요합니다. 애매함이 오래 못 버팁니다.",
     ],
   },
   Mercury: {
     soft: [
-      "수성이 오늘 생각과 연결의 흐름을 열어줍니다.",
-      "언어와 사고가 오늘 날카롭게 작동합니다.",
-      "소통의 에너지가 오늘 차트를 활성화합니다.",
+      "수성이 생각과 연결의 흐름을 엽니다. 말 한마디가 판을 바꿉니다.",
+      "언어와 사고가 날카롭습니다. 돌려 말하기보다 정확함이 먹힙니다.",
+      "소통의 에너지가 살아납니다. 필요한 대화부터 꺼내세요.",
     ],
     hard: [
-      "수성의 각이 오늘 소통에 주의를 요청합니다.",
-      "생각과 표현 사이에 마찰이 있는 날입니다.",
-      "말보다 의도를 먼저 확인해야 하는 날입니다.",
+      "수성의 각이 소통을 꼬이게 합니다. 말의 톤이 내용보다 먼저 들립니다.",
+      "생각과 표현 사이에 마찰이 있습니다. 과한 설명이 오히려 흐립니다.",
+      "말보다 의도를 먼저 확인해야 합니다. 본론을 피할수록 더 꼬입니다.",
     ],
   },
   Venus: {
     soft: [
-      "금성이 오늘 관계와 조화의 흐름을 만듭니다.",
-      "연결과 매력의 에너지가 오늘 차트에 흐릅니다.",
-      "금성의 부드러운 각이 오늘 따뜻한 에너지를 활성화합니다.",
+      "금성이 관계의 문을 엽니다. 마음 가는 쪽이 더 선명해집니다.",
+      "연결과 매력의 에너지가 살아납니다. 애매한 호감도 오늘은 티가 납니다.",
+      "금성의 부드러운 각이 따뜻함을 깨웁니다. 다정함도 행동해야 의미가 있습니다.",
     ],
     hard: [
-      "금성의 긴장이 관계에서 명확함을 요구합니다.",
-      "원하는 것과 현실 사이 조율이 오늘 필요합니다.",
-      "관계 에너지에서 균형점을 찾아야 하는 날입니다.",
+      "금성의 긴장이 관계의 애매함을 못 버티게 합니다.",
+      "원하는 것과 현실 사이, 오늘은 답을 미루기 어렵습니다.",
+      "관계 에너지의 균형이 무너질 수 있습니다. 선을 분명히 해야 합니다.",
     ],
   },
   Mars: {
     soft: [
-      "화성이 오늘 행동 에너지를 차트에 불어넣습니다.",
-      "의지와 드라이브가 오늘 방향을 만들어냅니다.",
-      "화성의 흐름이 오늘 결단력을 높여줍니다.",
+      "화성이 행동 에너지를 끌어올립니다. 미루던 일에 손대기 좋은 날입니다.",
+      "의지와 드라이브가 붙습니다. 망설임보다 실행이 유리합니다.",
+      "화성의 흐름이 결단력을 깨웁니다. 오늘은 몸이 먼저 답합니다.",
     ],
     hard: [
-      "화성의 각이 오늘 행동에 마찰을 만듭니다.",
-      "충동과 방향을 구분해야 하는 날입니다.",
-      "에너지가 강하게 올라옵니다. 방향이 중요합니다.",
+      "화성의 각이 행동에 마찰을 만듭니다. 밀어붙이기 전에 방향부터 보세요.",
+      "충동과 방향을 구분해야 합니다. 화가 곧 답은 아닙니다.",
+      "에너지가 세게 올라옵니다. 방향 없이 쓰면 관계부터 상합니다.",
     ],
   },
   Jupiter: {
     soft: [
-      "목성이 오늘 확장과 가능성의 흐름을 만듭니다.",
-      "성장 에너지가 오늘 차트를 통해 흐릅니다.",
-      "목성의 각이 큰 그림을 향한 신뢰를 지지합니다.",
+      "목성이 판을 넓힙니다. 움츠릴 이유가 줄어드는 날입니다.",
+      "성장 에너지가 흐릅니다. 지금은 몸집보다 크게 생각해도 됩니다.",
+      "목성의 각이 큰 그림을 밀어 올립니다. 가능성을 축소하지 마세요.",
     ],
     hard: [
-      "목성의 긴장이 오늘 과잉 확장을 경고합니다.",
-      "큰 기대와 현실 사이 조율이 오늘 필요합니다.",
-      "목성이 도전을 통해 성장의 방향을 보여줍니다.",
+      "목성의 긴장이 과장된 확장을 경고합니다. 큰 말이 쉬운 날입니다.",
+      "기대와 현실 사이 간격이 벌어집니다. 실행 가능한 크기로 줄이세요.",
+      "목성이 도전을 통해 성장의 진짜 크기를 보여줍니다. 환상은 덜어내세요.",
     ],
   },
   Saturn: {
     soft: [
-      "토성이 오늘 구조와 안정의 에너지를 지지합니다.",
-      "책임과 의지가 오늘 단단히 정렬됩니다.",
-      "토성의 흐름이 오늘 기반을 강화합니다.",
+      "토성이 구조와 안정을 세웁니다. 대충하던 것은 여기서 멈춥니다.",
+      "책임과 의지가 정렬됩니다. 오래 갈 것을 만들기 좋은 날입니다.",
+      "토성의 흐름이 기반을 강화합니다. 버티는 힘이 아니라 지속력이 붙습니다.",
     ],
     hard: [
-      "토성의 각이 오늘 책임을 중심에 올려놓습니다.",
-      "구조와 한계가 오늘의 과제를 만듭니다.",
-      "토성이 오늘 제한을 통해 핵심을 가리킵니다.",
+      "토성의 각이 책임을 앞으로 끌어옵니다. 회피는 바로 들킵니다.",
+      "구조와 한계가 과제를 만듭니다. 피하던 문제일수록 더 선명해집니다.",
+      "토성이 제한을 통해 핵심을 드러냅니다. 낡은 방식은 여기서 막힙니다.",
     ],
   },
 };
@@ -410,27 +410,27 @@ const BROAD_NATAL_TARGETS: PlanetName[] = ["Sun", "Moon", "Mercury", "Venus", "M
 // string repeats every day they're active. These 3-variant pools break that
 // repetition using dailyVar (derived from Moon degree + Mars position).
 const TRANSIT_HEADLINE_POOLS: Record<string, [string, string, string]> = {
-  "Jupiter_Sun_conjunction":     ["확장과 기회의 사이클이 열립니다.", "오늘 목성이 태양을 확장합니다. 큰 그림으로 나아가세요.", "성장 에너지가 자아에 집중됩니다. 행동할 준비를 하세요."],
+  "Jupiter_Sun_conjunction":     ["새 판이 열립니다. 작게 살기엔 오늘 에너지가 큽니다.", "오늘 목성이 태양을 밀어 올립니다. 몸집보다 크게 생각해도 됩니다.", "성장 에너지가 자아에 집중됩니다. 주저함이 더 손해인 날입니다."],
   "Jupiter_Sun_trine":           ["성장과 흐름이 자연스럽게 연결됩니다.", "목성이 오늘 태양에 가능성을 열어줍니다.", "자아와 확장이 조화롭게 흐릅니다. 신뢰하며 움직이세요."],
   "Jupiter_Moon_conjunction":    ["감정적 풍요로움이 흐릅니다. 낙관적인 에너지가 내면을 채웁니다.", "목성이 감정 에너지를 확장합니다. 내면이 열리는 날입니다.", "풍요로운 감정의 흐름 속에 있습니다. 그 에너지를 신뢰하세요."],
   "Jupiter_Moon_trine":          ["내면에서 확장의 흐름이 느껴집니다. 감정이 넓어지는 날입니다.", "목성과 달의 조화가 내면을 부드럽게 확장합니다.", "감정이 자유롭고 넉넉한 날입니다. 자연스럽게 흐르세요."],
   "Jupiter_Mercury_conjunction": ["사고와 소통이 확장됩니다. 큰 아이디어가 떠오르는 날입니다.", "목성이 수성에 닿습니다. 생각의 범위가 넓어집니다.", "언어와 사고의 확장이 일어납니다. 크게 생각하세요."],
   "Jupiter_Mercury_trine":       ["생각이 넓게 연결됩니다. 통찰과 배움에 좋은 날입니다.", "목성과 수성의 조화가 사고를 확장합니다.", "오늘 배우는 것이 크게 연결됩니다. 탐구하세요."],
-  "Jupiter_Venus_conjunction":   ["관계와 풍요로움이 만납니다. 사랑과 연결에 행운의 흐름이 있습니다.", "목성이 금성에 닿습니다. 관계 에너지가 풍요로워집니다.", "연결과 매력이 확장되는 날입니다. 먼저 다가가세요."],
-  "Saturn_Sun_conjunction":      ["구조와 책임이 자아에 집중합니다.", "토성이 태양에 닿습니다. 목표와 한계를 직면하는 날입니다.", "자아와 구조가 만나는 지점입니다. 진지하게 접근하세요."],
+  "Jupiter_Venus_conjunction":   ["관계가 커집니다. 애매한 끌림도 오늘은 얼굴을 드러냅니다.", "목성이 금성에 닿습니다. 사랑은 변명보다 표현을 원합니다.", "연결의 판이 넓어집니다. 숨기던 호감도 티가 납니다."],
+  "Saturn_Sun_conjunction":      ["현실이 당신을 시험합니다. 하지만 이건 축소가 아니라 재정렬입니다.", "토성이 태양에 닿습니다. 책임 회피가 바로 드러나는 날입니다.", "중심을 다시 세우라는 신호입니다. 대충은 통하지 않습니다."],
   "Saturn_Sun_trine":            ["구조와 의지가 자연스럽게 정렬됩니다. 체계적인 진전을 만들기 좋습니다.", "토성과 태양의 조화가 안정적인 흐름을 만듭니다.", "기반이 단단해지는 날입니다. 장기적인 것에 투자하세요."],
-  "Saturn_Sun_square":           ["긴장이 구조를 시험합니다. 책임감 있는 선택이 오늘의 무게입니다.", "토성이 태양에 도전합니다. 한계를 정직하게 보는 날입니다.", "구조의 마찰이 있습니다. 기본에 집중하면 길이 보입니다."],
+  "Saturn_Sun_square":           ["버티는 방식이 낡았다면, 오늘 바로 티가 납니다.", "토성이 태양에 맞섭니다. 자존심보다 구조 점검이 먼저입니다.", "막히는 이유가 외부만은 아닙니다. 기준을 다시 세워야 합니다."],
   "Saturn_Moon_conjunction":     ["감정에 무게감이 실립니다. 천천히, 진지하게 접근하세요.", "토성이 달에 닿습니다. 감정과 책임이 교차합니다.", "내면의 무게를 느끼는 날입니다. 억누르지 말고 받아들이세요."],
   "Saturn_Moon_square":          ["감정적 제한이나 무게감이 있을 수 있습니다.", "토성이 달을 긴장시킵니다. 감정 표현에 인내가 필요합니다.", "감정의 구조가 시험받는 날입니다. 하나씩 정리하세요."],
   "Saturn_Moon_trine":           ["감정적 안정과 현실감이 균형을 이룹니다. 기반이 단단합니다.", "토성과 달의 조화가 감정을 차분하게 안정시킵니다.", "오늘 감정이 단단하고 명확합니다. 그것을 신뢰하세요."],
   "Saturn_Mercury_conjunction":  ["신중한 사고가 중요합니다. 말과 결정에 책임이 따릅니다.", "토성이 수성에 닿습니다. 핵심만 말하는 날입니다.", "언어에 무게감이 실립니다. 신중하게 표현하세요."],
   "Saturn_Mercury_square":       ["표현이 막히거나 무거울 수 있습니다. 핵심만 전달하세요.", "토성이 수성을 긴장시킵니다. 말보다 행동으로 보여주세요.", "소통의 구조에 마찰이 있는 날입니다. 간결하게 접근하세요."],
-  "Saturn_Venus_conjunction":    ["관계에 현실적인 질문이 제기됩니다. 진지한 대화가 필요할 수 있습니다.", "토성이 금성에 닿습니다. 관계에 책임이 요구됩니다.", "사랑과 현실 사이 균형을 찾아야 하는 날입니다."],
-  "Saturn_Venus_square":         ["관계에서 제한이나 거리감이 느껴집니다. 인내가 필요한 시기입니다.", "토성이 금성을 긴장시킵니다. 관계의 현실을 직면하는 날입니다.", "연결에서 구조적 도전이 있습니다. 진지하게 대화하세요."],
+  "Saturn_Venus_conjunction":    ["관계의 진심이 시험대에 오릅니다. 말보다 태도가 증명합니다.", "토성이 금성에 닿습니다. 좋아하는 마음도 책임을 요구받습니다.", "애매한 관계는 버티기 어렵습니다. 선을 다시 그어야 합니다."],
+  "Saturn_Venus_square":         ["관계의 거리감이 핑계처럼 보이지 않는 날입니다.", "토성이 금성을 압박합니다. 불편한 진실을 미루면 더 차가워집니다.", "좋아하는 것만으로는 부족합니다. 관계의 구조를 봐야 합니다."],
   // ── Moon transit pools ──
   "Moon_Sun_conjunction":       ["자아와 감정이 하나가 됩니다. 원하는 것이 선명해집니다.", "감정이 의지와 같은 방향을 가리킵니다.", "내면과 자아가 오늘 하나의 신호로 연결됩니다."],
   "Moon_Moon_conjunction":      ["감정의 기억이 다시 활성화됩니다.", "오래된 감정 패턴이 표면으로 올라옵니다.", "감정이 과거와 현재를 연결하는 날입니다."],
-  "Moon_Venus_conjunction":     ["관계와 감수성이 오늘의 중심입니다.", "사랑의 감정이 표면으로 올라오는 날입니다.", "연결하고 싶은 마음이 강해집니다."],
+  "Moon_Venus_conjunction":     ["마음이 먼저 움직입니다. 오늘 끌림은 꽤 솔직합니다.", "사랑하고 싶은 감정이 표면으로 올라옵니다. 숨기기 어렵습니다.", "관계가 고요해 보여도, 속마음은 이미 반응하고 있습니다."],
   "Moon_Mars_conjunction":      ["감정과 행동 에너지가 연결됩니다.", "내면의 충동이 행동으로 이어지려 합니다.", "감정이 행동을 강하게 자극합니다."],
   "Moon_Sun_opposition":        ["감정과 의지가 다른 방향을 향합니다.", "자아와 내면 욕구 사이 균형이 필요합니다.", "원하는 것과 느끼는 것이 충돌하는 날입니다."],
   "Moon_Sun_square":            ["내면의 긴장이 행동 충동을 만듭니다.", "감정과 의지 사이에서 선택을 요구받습니다.", "긴장이 무언가를 명확하게 하도록 압박합니다."],
@@ -442,13 +442,13 @@ const TRANSIT_HEADLINE_POOLS: Record<string, [string, string, string]> = {
   "Moon_Mercury_conjunction":   ["직관과 언어가 만납니다. 느낀 것을 표현하기 좋은 날입니다.", "생각이 감정과 연결되는 날입니다.", "내면의 말이 언어로 나오기 쉬운 날입니다."],
   "Moon_Mercury_trine":         ["감정과 생각이 연결됩니다. 소통이 자연스러운 날입니다.", "감정을 논리로 표현하기 좋은 날입니다.", "직관과 언어가 부드럽게 흐릅니다."],
   "Moon_Mars_trine":            ["감정과 행동이 일치합니다. 원하는 것으로 움직이기 좋습니다.", "의지와 감정이 같은 방향입니다. 지금 움직이세요.", "행동 에너지가 감정과 자연스럽게 연결됩니다."],
-  "Moon_Venus_opposition":      ["관계에서 감정의 균형이 필요합니다. 양쪽을 조율하세요.", "원하는 연결과 현실 사이에 긴장이 있습니다.", "감정과 관계 에너지가 서로 당기고 있습니다."],
-  "Moon_Venus_trine":           ["따뜻한 감정 에너지가 관계를 부드럽게 합니다.", "관계에서 공감과 연결이 자연스럽습니다.", "감정적 따뜻함이 오늘 관계를 열어줍니다."],
+  "Moon_Venus_opposition":      ["마음과 관계의 속도가 어긋납니다. 애매하게 넘길수록 더 꼬입니다.", "원하는 연결과 실제 거리감이 정면으로 마주칩니다.", "좋아하는 마음과 현실 감각을 동시에 다뤄야 하는 날입니다."],
+  "Moon_Venus_trine":           ["공감이 부드럽게 연결됩니다. 가까워질 이유가 충분합니다.", "따뜻한 감정이 흐릅니다. 다정함이 오늘의 주도권입니다.", "마음을 열었을 때 관계가 자연스럽게 살아납니다."],
   "Moon_Jupiter_conjunction":   ["감정적 낙관이 높아집니다. 넓은 시야로 하루를 시작하세요.", "감정이 풍요롭고 열려 있는 날입니다.", "내면의 기대치가 높아지는 날입니다."],
   "Moon_Jupiter_square":        ["과도한 기대가 감정을 흔들 수 있습니다. 현실적으로 조율하세요.", "감정적 과잉이 현실 판단을 흐릴 수 있습니다.", "낙관과 현실을 균형 있게 보는 것이 필요합니다."],
   "Moon_Saturn_conjunction":    ["오늘 감정에 진지함이 실립니다. 깊은 것들을 직면하는 날입니다.", "감정에 무게감이 있는 날입니다. 억압하지 마세요.", "내면의 책임감이 감정과 교차합니다."],
   // ── Sun transit pools ──
-  "Sun_Sun_conjunction":        ["태양 귀환 — 새로운 에너지 사이클이 시작됩니다.", "자아가 자신을 마주하는 날입니다. 새로운 의도를 설정하세요.", "생일 에너지 — 새 사이클의 출발점입니다."],
+  "Sun_Sun_conjunction":        ["태양 귀환입니다. 예전 버전의 당신은 여기서 끝납니다.", "새 사이클이 열립니다. 이제 무엇으로 빛날지 직접 정해야 합니다.", "생일 에너지입니다. 중심을 다시 고를 시간입니다."],
   "Sun_Moon_conjunction":       ["에너지가 내면의 감정 구조를 활성화합니다.", "자아와 감정 기억이 연결되는 날입니다.", "내면을 밝히는 에너지가 감지됩니다."],
   "Sun_Moon_opposition":        ["자아 표현과 감정적 욕구 사이에 긴장이 있습니다.", "의지와 감정이 서로 다른 방향을 보고 있습니다.", "내면 욕구와 외부 표현 사이 균형이 필요합니다."],
   "Sun_Moon_square":            ["에너지와 감정 사이에 마찰이 있습니다. 방향을 통합하세요.", "자아 에너지가 감정과 충돌합니다.", "내면과 외부 사이에서 선택이 필요한 날입니다."],
@@ -462,15 +462,15 @@ const TRANSIT_HEADLINE_POOLS: Record<string, [string, string, string]> = {
   "Mercury_Venus_conjunction":  ["말이 관계를 열어주는 날입니다. 감정을 언어로 표현하세요.", "연결하고 싶은 것을 말로 꺼낼 수 있는 날입니다.", "수성과 금성이 만납니다. 아름다운 소통이 가능합니다."],
   "Mercury_Mars_conjunction":   ["사고와 행동이 빠르게 연결됩니다. 결정이 명확해집니다.", "말과 행동이 동시에 움직이는 날입니다.", "생각을 즉각 행동으로 연결하는 에너지가 있습니다."],
   // ── Venus transit pools ──
-  "Venus_Sun_conjunction":      ["매력과 관계 에너지가 자아와 연결됩니다.", "자아와 매력이 하나가 되는 날입니다.", "금성이 태양에 닿습니다. 관계에서 빛나는 날입니다."],
-  "Venus_Sun_trine":            ["자아와 매력이 자연스럽게 빛납니다. 관계에 좋은 에너지입니다.", "금성이 자아를 지지합니다. 편안하게 연결하세요.", "매력이 자아와 조화롭게 흐릅니다."],
-  "Venus_Sun_square":           ["관계와 자아 표현 사이에 긴장이 있습니다. 원하는 것을 명확히 하세요.", "자아 표현과 관계 욕구가 충돌합니다.", "나와 상대 사이의 균형이 필요한 날입니다."],
-  "Venus_Sun_opposition":       ["자아와 관계 사이 균형이 필요합니다. 나와 상대 모두를 고려하세요.", "나의 필요와 상대의 필요가 마주치고 있습니다.", "관계와 자아 사이에서 선택이 필요합니다."],
-  "Venus_Moon_conjunction":     ["따뜻한 감정 에너지와 관계 조화의 날입니다.", "사랑과 내면이 연결되는 날입니다.", "금성과 달이 만납니다. 감정이 관계를 채웁니다."],
-  "Venus_Moon_trine":           ["감정적 조화로움이 흐릅니다. 사랑과 공감이 자연스럽습니다.", "감정과 관계 에너지가 부드럽게 연결됩니다.", "금성이 달을 지지합니다. 연결이 쉬워지는 날입니다."],
-  "Venus_Moon_square":          ["관계에서 감정적 불일치가 있을 수 있습니다. 원하는 것을 명확히 소통하세요.", "감정과 관계 욕구 사이에 마찰이 있습니다.", "연결에서 기대가 충돌하는 날입니다."],
-  "Venus_Mercury_conjunction":  ["아름다운 말이 관계를 가깝게 합니다. 감사를 표현하세요.", "소통이 관계를 열어주는 날입니다.", "언어가 연결의 다리가 됩니다."],
-  "Venus_Mars_conjunction":     ["사랑과 욕망이 연결됩니다. 행동하는 열정이 관계를 움직입니다.", "금성과 화성이 만납니다. 강한 관계 에너지가 흐릅니다.", "매력과 행동이 하나로 연결되는 날입니다."],
+  "Venus_Sun_conjunction":      ["매력이 올라옵니다. 숨기려 할수록 더 눈에 띕니다.", "금성이 태양에 닿습니다. 당신이 원하는 방식으로 빛날 차례입니다.", "관계 에너지가 자아를 깨웁니다. 호감에도 중심이 필요합니다."],
+  "Venus_Sun_trine":            ["억지 없이도 끌림이 생깁니다. 편안한 자신감이 통하는 날입니다.", "자아와 매력이 같은 편입니다. 먼저 다가가도 어색하지 않습니다.", "당신다운 방식이 가장 매력적으로 읽히는 날입니다."],
+  "Venus_Sun_square":           ["좋아 보이고 싶은 마음과 진짜 마음이 충돌합니다.", "관계를 위해 나를 줄일수록 더 어색해집니다.", "매력은 타협이 아니라 선명함에서 나옵니다."],
+  "Venus_Sun_opposition":       ["나와 상대의 욕구가 정면으로 마주칩니다. 회피는 더 시끄럽습니다.", "관계에 맞추느라 중심을 잃지 마세요.", "균형이 필요하지만, 자기삭제는 답이 아닙니다."],
+  "Venus_Moon_conjunction":     ["마음이 사랑 쪽으로 기울어집니다. 오늘은 숨김이 잘 안 됩니다.", "감정과 호감이 한편이 됩니다. 표현이 관계를 움직입니다.", "부드러운 끌림이 올라옵니다. 가까워질 타이밍입니다."],
+  "Venus_Moon_trine":           ["다정함이 과장 없이 전달됩니다. 관계가 자연스럽게 풀립니다.", "공감이 매력으로 번집니다. 오늘은 따뜻함이 힘입니다.", "좋아하는 마음이 편안한 방식으로 닿는 날입니다."],
+  "Venus_Moon_square":          ["마음은 원하지만 방식이 엇갈립니다. 감정 번역이 필요한 날입니다.", "관계 기대치와 감정 리듬이 부딪힙니다.", "서운함을 참는다고 해결되지는 않습니다."],
+  "Venus_Mercury_conjunction":  ["말이 관계를 당깁니다. 돌려 말할수록 힘이 빠집니다.", "좋아한다면 티가 납니다. 오늘은 언어가 숨은 마음을 고발합니다.", "센스 있는 한마디가 분위기를 바꿉니다."],
+  "Venus_Mars_conjunction":     ["끌림과 욕망이 같은 방향으로 붙습니다. 관계가 뜨거워집니다.", "금성과 화성이 만납니다. 밀고 당기기가 아니라 행동이 답입니다.", "매력에 속도가 붙습니다. 애매한 텐션은 오래 못 갑니다."],
   // ── Mars transit pools ──
   "Mars_Sun_conjunction":       ["드라이브와 에너지가 집중됩니다.", "화성이 자아에 닿습니다. 강한 추진력이 있습니다.", "행동 에너지와 의지가 하나가 됩니다."],
   "Mars_Sun_square":            ["좌절이나 긴장을 생산적 에너지로 전환할 수 있습니다.", "자아와 행동 에너지 사이에 마찰이 있습니다.", "저항이 방향을 찾으면 강력해집니다."],
@@ -485,13 +485,13 @@ const TRANSIT_HEADLINE_POOLS: Record<string, [string, string, string]> = {
 // When headline is driven by transit planet X, lede comes from the natal planet
 // being aspected. Different axis → different flavor → no same-family repetition.
 const NATAL_PLANET_LEDE: Partial<Record<PlanetName, { soft: string[]; hard: string[] }>> = {
-  Sun:     { soft: ["자아 표현 에너지가 오늘 자연스럽게 흐릅니다. 중요한 것으로 나아가세요.", "의지가 방향을 만드는 날입니다. 원하는 것을 선언하세요.", "태양 에너지가 오늘 활성화됩니다. 자신감 있게 움직이세요."], hard: ["자아와 저항이 마주치는 날입니다. 방향을 점검하세요.", "의지와 외부 요구 사이에 긴장이 있습니다. 핵심을 지키세요.", "에너지가 강하지만 방향이 필요합니다. 충동보다 의도를 따르세요."] },
-  Moon:    { soft: ["감정이 오늘 선명하게 흐릅니다. 내면의 신호를 신뢰하세요.", "내면 에너지가 조화롭습니다. 느끼는 것을 정보로 사용하세요.", "감정의 흐름이 방향을 가리킵니다. 그것을 따르세요."], hard: ["감정의 파도가 높아집니다. 반응하기 전에 멈추는 것이 현명합니다.", "내면의 긴장이 표면으로 올라옵니다. 그것을 이해하려 하세요.", "감정이 충동과 가까워지는 날입니다. 의식적인 조율이 필요합니다."] },
-  Mercury: { soft: ["사고가 오늘 명확하게 작동합니다. 중요한 대화를 시작하세요.", "언어와 연결이 오늘 자연스럽게 흐릅니다.", "아이디어가 방향을 만드는 날입니다. 생각한 것을 표현하세요."], hard: ["사고와 표현 사이에 마찰이 있습니다. 의도를 먼저 확인하세요.", "소통이 복잡해질 수 있는 날입니다. 핵심에만 집중하세요.", "정보 과부하가 올 수 있습니다. 하나에만 집중하면 풀립니다."] },
-  Venus:   { soft: ["관계 에너지가 오늘 따뜻하게 흐릅니다. 먼저 다가가세요.", "연결과 조화가 오늘의 흐름입니다. 감사를 표현하세요.", "사랑과 매력의 에너지가 높습니다. 관계에 투자하세요."], hard: ["관계에서 원하는 것을 명확히 해야 합니다.", "기대와 현실 사이에 균형이 필요한 날입니다.", "연결에서 마찰이 있습니다. 직접 소통으로 해소하세요."] },
-  Mars:    { soft: ["행동 에너지가 오늘 집중됩니다. 결단력 있게 움직이세요.", "의지와 행동이 일치합니다. 미뤄온 것을 밀어붙이세요.", "에너지 흐름이 자연스럽습니다. 지금이 행동할 때입니다."], hard: ["충동이 강해집니다. 행동 전에 의도를 확인하는 한 박자가 필요합니다.", "긴장이 행동을 자극합니다. 저항을 방향 전환에 사용하세요.", "에너지가 마찰로 변할 수 있습니다. 방향을 잡고 움직이세요."] },
-  Jupiter: { soft: ["확장의 흐름이 열립니다. 지금 크게 생각하고 움직이는 것이 맞습니다.", "성장 에너지가 자연스럽게 흐릅니다. 새로운 가능성에 열려 있으세요.", "기회가 가까이 있습니다. 열린 마음으로 접근하세요."], hard: ["과잉 확장의 유혹이 있습니다. 크게 보되 현실 점검도 함께 하세요.", "기대와 현실 사이 간극이 있습니다. 실행 가능한 것부터 시작하세요.", "큰 그림이 세부를 가릴 수 있습니다. 균형을 유지하세요."] },
-  Saturn:  { soft: ["구조와 의지가 정렬됩니다. 체계적으로 접근하면 단단한 진전을 만들 수 있습니다.", "안정적인 에너지가 흐릅니다. 루틴과 기초가 오늘 든든합니다.", "기반이 단단해지는 날입니다. 장기적인 것에 집중하세요."], hard: ["책임이 중심에 옵니다. 중요한 것을 먼저 하고 나머지를 결정하세요.", "구조가 재정렬되는 중입니다. 흔들려도 무너지는 게 아닙니다.", "저항이 있는 날입니다. 강행보다 단계적 접근이 효과적입니다."] },
+  Sun:     { soft: ["자아가 또렷합니다. 남의 기대보다 내 방향을 먼저 고르세요.", "의지가 방향을 만듭니다. 오늘은 원하는 것을 숨기지 않는 편이 낫습니다.", "태양 에너지가 활성화됩니다. 당신 쪽으로 판을 당겨오세요."], hard: ["자아와 저항이 마주칩니다. 잘 버티는 척보다 기준을 다시 세우세요.", "의지와 외부 요구 사이에 긴장이 있습니다. 흔들려도 핵심은 지켜야 합니다.", "에너지가 강하지만 방향이 필요합니다. 자존심보다 의도를 따르세요."] },
+  Moon:    { soft: ["감정이 정직해집니다. 못 느낀 척해도 몸은 이미 압니다.", "내면 에너지가 조화롭습니다. 느낌을 무시하지 말고 정보로 쓰세요.", "감정의 흐름이 방향을 가리킵니다. 오늘은 마음이 먼저 답합니다."], hard: ["감정의 파도가 높아집니다. 반응하기 전에 무엇이 진짜 상처인지 구분하세요.", "내면의 긴장이 올라옵니다. 눌러두면 더 크게 돌아옵니다.", "감정이 충동과 가까워집니다. 의식적인 거리 조절이 필요합니다."] },
+  Mercury: { soft: ["사고가 명확합니다. 필요한 대화를 먼저 여는 쪽이 유리합니다.", "언어와 연결이 자연스럽게 흐릅니다. 정확하게 말할수록 먹힙니다.", "아이디어가 방향을 만듭니다. 생각한 것은 입 밖으로 꺼내야 현실이 됩니다."], hard: ["사고와 표현 사이에 마찰이 있습니다. 과한 설명보다 핵심이 낫습니다.", "소통이 복잡해질 수 있습니다. 본론을 피할수록 더 꼬입니다.", "정보 과부하가 올 수 있습니다. 하나만 선명하게 잡으면 풀립니다."] },
+  Venus:   { soft: ["관계 에너지가 살아납니다. 다정함도 표현해야 효력이 있습니다.", "연결과 조화가 흐릅니다. 먼저 다가가는 쪽이 분위기를 만듭니다.", "사랑과 매력의 에너지가 높습니다. 호감은 오늘 더 숨기기 어렵습니다."], hard: ["관계의 애매함이 유독 거슬립니다. 원하는 것을 흐리지 마세요.", "기대와 현실 사이 균형이 필요합니다. 참는다고 답이 되지는 않습니다.", "연결에서 마찰이 있습니다. 불편해도 직접 말해야 풀립니다."] },
+  Mars:    { soft: ["행동 에너지가 붙습니다. 미뤄둔 일에 바로 손대기 좋은 날입니다.", "의지와 행동이 일치합니다. 머뭇거릴수록 기세만 빠집니다.", "에너지 흐름이 좋습니다. 오늘은 실행이 가장 정확한 언어입니다."], hard: ["충동이 강해집니다. 바로 반응하면 중요한 걸 놓칠 수 있습니다.", "긴장이 행동을 자극합니다. 화를 방향 전환에 써야 합니다.", "에너지가 마찰로 번질 수 있습니다. 힘보다 조준이 먼저입니다."] },
+  Jupiter: { soft: ["확장의 흐름이 열립니다. 작은 안전지대에만 머물기엔 아깝습니다.", "성장 에너지가 자연스럽게 흐릅니다. 가능성을 축소하지 마세요.", "기회가 가까이 있습니다. 열린 마음보다 열린 행동이 더 중요합니다."], hard: ["과잉 확장의 유혹이 있습니다. 큰 말이 쉬운 날일수록 현실 점검이 필요합니다.", "기대와 현실 사이 간극이 있습니다. 실행 가능한 크기부터 잡으세요.", "큰 그림이 세부를 가릴 수 있습니다. 가능성과 환상을 구분해야 합니다."] },
+  Saturn:  { soft: ["구조와 의지가 정렬됩니다. 오래 갈 것을 만드는 데 유리합니다.", "안정적인 에너지가 흐릅니다. 루틴과 기초가 오늘 당신 편입니다.", "기반이 단단해집니다. 단기 성과보다 지속력을 택하세요."], hard: ["책임이 앞으로 나옵니다. 피하던 문제일수록 더 선명해집니다.", "구조가 재정렬되는 중입니다. 흔들려도 무너지는 건 아닙니다.", "저항이 있는 날입니다. 강행보다 기준 재정비가 더 효과적입니다."] },
   Uranus:  { soft: ["예상을 벗어난 통찰이 올 수 있습니다. 유연하게 받아들이세요.", "변화와 혁신의 에너지가 흐릅니다. 기존 방식 밖에서 답을 찾아보세요.", "직관적인 번뜩임이 있는 날입니다. 그 신호를 무시하지 마세요."], hard: ["돌발적인 상황이 생길 수 있습니다. 유연하게 대응하세요.", "변화가 갑자기 찾아올 수 있습니다. 저항보다 적응이 낫습니다.", "불안정한 에너지가 흐릅니다. 기본에 집중하면 됩니다."] },
   Neptune: { soft: ["직관과 감수성이 높아지는 날입니다. 느끼는 것을 신뢰하세요.", "창의적 에너지가 흐릅니다. 상상력을 자원으로 활용하세요.", "경계가 부드러워지는 날입니다. 공감과 연결에 좋습니다."], hard: ["현실과 이상 사이에 주의가 필요합니다. 판단을 흐리지 마세요.", "혼란이 올 수 있습니다. 명확한 사실에 집중하세요.", "경계가 흐려지는 날입니다. 책임을 회피하지 마세요."] },
   Pluto:   { soft: ["깊은 변환 에너지가 흐릅니다. 오래된 것을 내려놓을 준비를 하세요.", "본질적인 것이 드러나는 날입니다. 그것과 함께 움직이세요.", "변화의 에너지가 집중됩니다. 저항하지 않고 흘러가세요."], hard: ["통제할 수 없는 것이 드러납니다. 수용하는 것이 오늘의 전략입니다.", "깊은 긴장이 있는 날입니다. 집착보다 내려놓음이 효과적입니다.", "변환의 압력이 강합니다. 두려운 것을 정면으로 보세요."] },
@@ -551,6 +551,61 @@ function moonPhasePhrase(moonPhase: number): string {
     if (moonPhase < maxDeg) return text;
   }
   return MOON_PHASE_PHRASE[MOON_PHASE_PHRASE.length - 1].text;
+}
+
+function dedupeHeadlinePool(...groups: Array<readonly string[] | undefined | null>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const group of groups) {
+    if (!group) continue;
+    for (const raw of group) {
+      const text = raw.trim();
+      if (!text || seen.has(text)) continue;
+      seen.add(text);
+      result.push(text);
+    }
+  }
+
+  return result;
+}
+
+function isHardHeadlineTransit(
+  transit: { tPlanet: PlanetName; aspect: AspectName },
+): boolean {
+  return ["square", "opposition"].includes(transit.aspect)
+    || (transit.aspect === "conjunction" && (["Mars", "Saturn"] as PlanetName[]).includes(transit.tPlanet));
+}
+
+function buildHeadlineVariantPool(
+  transit: { tPlanet: PlanetName; nPlanet: PlanetName; aspect: AspectName },
+  baseHeadline: string,
+): string[] {
+  const poolKey = `${transit.tPlanet}_${transit.nPlanet}_${transit.aspect}`;
+  const isHard = isHardHeadlineTransit(transit);
+
+  return dedupeHeadlinePool(
+    [baseHeadline],
+    TRANSIT_HEADLINE_POOLS[poolKey],
+    NATAL_PLANET_LEDE[transit.nPlanet]?.[isHard ? "hard" : "soft"],
+    GENERIC_TRANSIT_HEADLINES[transit.tPlanet]?.[isHard ? "hard" : "soft"],
+  );
+}
+
+function headlineVariantSeed(
+  transitDate: Date,
+  moonDegInSign: number,
+  transit: { tPlanet: PlanetName; nPlanet: PlanetName; aspect: AspectName },
+): number {
+  const utcDay = Math.floor(
+    Date.UTC(transitDate.getUTCFullYear(), transitDate.getUTCMonth(), transitDate.getUTCDate()) / 86400000,
+  );
+
+  return utcDay
+    + moonDegInSign
+    + (PLANET_IDX[transit.tPlanet] ?? 0) * 11
+    + (PLANET_IDX[transit.nPlanet] ?? 0) * 17
+    + HEADLINE_ASPECT_WEIGHT[transit.aspect] * 23;
 }
 
 // ── Transit aspect key phrases ────────────────────────────────────────────────
@@ -1068,16 +1123,12 @@ export function interpretTransits(natal: NatalChart, transitDate: Date): Transit
   const moonDegInSign = Math.floor(norm360(moonLon) % 30);
   const moonDegBand = Math.floor(moonDegInSign / 10) as 0 | 1 | 2;
 
-  // Daily variety index: Moon degree + Mars degree-within-sign (both change every day).
-  // Ensures slow-planet transit headlines vary even when the same aspect is active for multiple days.
-  const marsLon = transitLons.get("Mars") ?? 0;
-  const dailyVar = moonDegInSign + Math.floor(norm360(marsLon) % 30 / 3);
-
   // ── Headline selection ────────────────────────────────────────────────────
   // Step 1: scan TRANSIT_HEADLINE_MAP (specific transit+natal combos).
   // Step 2: if nothing fires, run broad scan of ALL transit×natal aspects.
   // Track top-2 transits (by different tPlanet) so lede can use 2nd for independence.
   let headline = HEADLINE_BY_MOON_SIGN_POOL[moonSign][moonDegBand];
+  let bestHeadlineBase = headline;
   let headlineBestScore = 0;
   let secondBestScore = 0;
   let bestTransit: { tPlanet: PlanetName; nPlanet: PlanetName; aspect: AspectName; orb: number } | null = null;
@@ -1099,19 +1150,12 @@ export function interpretTransits(natal: NatalChart, transitDate: Date): Transit
       }
       headlineBestScore = score;
       headline = row.headline;
+      bestHeadlineBase = row.headline;
       bestTransit = { tPlanet: row.transitPlanet, nPlanet: row.natalPlanet, aspect: row.aspect, orb: found.orb };
     } else if (score > secondBestScore && row.transitPlanet !== bestTransit?.tPlanet) {
       secondBestScore = score;
       secondBestTransit = { tPlanet: row.transitPlanet, nPlanet: row.natalPlanet, aspect: row.aspect, orb: found.orb };
     }
-  }
-
-  // For slow-planet winners (Jupiter/Saturn), apply dailyVar to TRANSIT_HEADLINE_POOLS
-  // so the same transit doesn't repeat the exact same text day after day.
-  if (bestTransit) {
-    const poolKey = `${bestTransit.tPlanet}_${bestTransit.nPlanet}_${bestTransit.aspect}`;
-    const variants = TRANSIT_HEADLINE_POOLS[poolKey];
-    if (variants) headline = variants[dailyVar % 3];
   }
 
   // Step 2: broad scan — fires for any transit×natal aspect, even if not in TRANSIT_HEADLINE_MAP.
@@ -1140,13 +1184,22 @@ export function interpretTransits(natal: NatalChart, transitDate: Date): Transit
           }
           headlineBestScore = score;
           const pool = GENERIC_TRANSIT_HEADLINES[tPlanet]?.[isHard ? "hard" : "soft"];
-          headline = pool ? pool[dailyVar % 3] : HEADLINE_BY_MOON_SIGN_POOL[moonSign][moonDegBand];
+          bestHeadlineBase = pool?.[0] ?? HEADLINE_BY_MOON_SIGN_POOL[moonSign][moonDegBand];
+          headline = bestHeadlineBase;
           bestTransit = { tPlanet, nPlanet, aspect: found.name, orb: found.orb };
         } else if (score > secondBestScore && tPlanet !== bestTransit?.tPlanet) {
           secondBestScore = score;
           secondBestTransit = { tPlanet, nPlanet, aspect: found.name, orb: found.orb };
         }
       }
+    }
+  }
+
+  if (bestTransit) {
+    const candidates = buildHeadlineVariantPool(bestTransit, bestHeadlineBase);
+    if (candidates.length > 0) {
+      const seed = headlineVariantSeed(transitDate, moonDegInSign, bestTransit);
+      headline = candidates[seed % candidates.length];
     }
   }
 
@@ -1446,24 +1499,24 @@ const ELEMENT_HEADLINE: Record<string, Record<"불"|"흙"|"공기"|"물", Record
 const ELEMENT_HEADLINE_ALTS: Record<string, Record<string, Record<string, [string, string, string]>>> = {
   "관계": {
     "불": {
-      strength:  ["열정이 관계를 이끄는 날", "활기찬 에너지가 관계를 살립니다", "행동이 관계를 깨우는 날"],
-      challenge: ["충동이 관계에 마찰을 만듭니다", "강한 에너지가 관계를 압박합니다", "마찰 속에서 관계가 시험받습니다"],
-      neutral:   ["관계에 활기찬 변화가 있습니다", "관계에 새로운 흐름이 시작됩니다", "관계의 방향이 바뀌고 있습니다"],
+      strength:  ["끌림은 이미 불붙었습니다. 관계를 깨울 차례입니다", "열정이 관계를 앞당깁니다", "미루던 감정도 오늘은 행동을 원합니다"],
+      challenge: ["속도 조절에 실패하면 관계가 타버립니다", "강한 에너지가 관계를 밀어붙입니다. 의도가 필요합니다", "감정의 온도차가 관계를 시험합니다"],
+      neutral:   ["관계 판이 움직입니다. 가만히 있어도 분위기가 바뀝니다", "정적인 관계에도 작은 점화가 들어옵니다", "관계의 방향이 서서히 뒤집히고 있습니다"],
     },
     "흙": {
-      strength:  ["신뢰가 관계의 토대를 다집니다", "꾸준한 관심이 관계를 단단하게 합니다", "안정이 오늘 연결의 기초가 됩니다"],
-      challenge: ["고집이 연결을 막을 수 있습니다", "완고함이 관계의 유연성을 막습니다", "변화에 저항하면 연결이 끊깁니다"],
-      neutral:   ["관계에 실질적 변화가 있습니다", "관계에서 실질적 점검이 필요합니다", "신중한 접근이 오늘 관계를 지킵니다"],
+      strength:  ["신뢰가 말보다 먼저 쌓이는 날", "꾸준함이 관계의 수준을 결정합니다", "관계를 오래가게 하는 태도가 드러납니다"],
+      challenge: ["버티기만 하는 관계는 오늘 더 답답합니다", "고집이 친밀함을 막습니다", "변화 없는 안정은 결국 거리감이 됩니다"],
+      neutral:   ["관계를 현실 기준으로 다시 보게 됩니다", "다정함보다 지속 가능성이 중요해지는 날", "관계의 실질 조건을 점검하게 됩니다"],
     },
     "공기": {
-      strength:  ["대화가 관계를 열어줍니다", "열린 소통이 오늘 관계를 열어줍니다", "지적 연결이 감정을 강화합니다"],
-      challenge: ["과잉 분석이 관계를 냉각시킵니다", "분석이 감정을 밀어낼 수 있습니다", "머릿속에만 있는 관계는 식어갑니다"],
-      neutral:   ["관계에 새로운 관점이 필요합니다", "관계에 새로운 시각이 들어옵니다", "가벼운 대화가 오늘의 시작점입니다"],
+      strength:  ["대화 한 번이 관계의 공기를 바꿉니다", "지적 끌림이 감정보다 먼저 작동합니다", "말이 통하는 순간 관계도 깊어집니다"],
+      challenge: ["분석이 많아질수록 마음은 뒤로 밀립니다", "말은 많은데 진심은 비어 보일 수 있습니다", "해석만 하다 관계 온도를 놓치기 쉽습니다"],
+      neutral:   ["관계에 새로운 관점이 들어옵니다", "가벼운 대화가 의외로 핵심을 건드립니다", "말의 방식이 관계 방향을 정합니다"],
     },
     "물": {
-      strength:  ["감성적 연결이 깊어지는 날", "공감이 오늘 관계를 깊게 합니다", "말 없이도 연결되는 에너지가 있습니다"],
-      challenge: ["감정의 파도가 관계를 흔듭니다", "감정이 관계의 경계를 흐릿하게 합니다", "감정 파동이 오늘 관계에 영향을 줍니다"],
-      neutral:   ["관계에서 직관이 중요합니다", "직관이 관계의 방향을 가리킵니다", "느낌을 신뢰하며 연결에 다가가세요"],
+      strength:  ["감정이 닿는 속도가 관계를 깊게 만듭니다", "공감이 관계의 문을 엽니다", "말하지 않아도 알아차리는 에너지가 있습니다"],
+      challenge: ["감정이 번지면 관계의 경계도 흐려집니다", "상대 기분까지 다 책임지려 하면 관계가 무거워집니다", "감정 파도가 커질수록 거리 조절이 더 중요합니다"],
+      neutral:   ["직감이 관계의 진짜 온도를 알려줍니다", "느낌을 무시하면 관계도 흐려집니다", "조용한 신호가 관계 방향을 바꾸고 있습니다"],
     },
   },
   "사고·표현": {
@@ -1646,29 +1699,29 @@ const DOMAIN_STATUS_RICH: Record<string, Record<string, Record<string, string>>>
 const DOMAIN_TRANSIT_HEADLINE: Record<string, Partial<Record<PlanetName, Record<"strength"|"challenge"|"neutral", [string, string, string]>>>> = {
   "관계": {
     Venus: {
-      strength:  ["금성이 오늘 관계의 에너지를 열어줍니다", "연결과 매력이 흐르는 날", "금성이 활성화됩니다. 관계에서 빛나는 하루"],
-      challenge: ["금성의 긴장이 관계에 질문을 던집니다", "원하는 것과 현실 사이 — 균형을 찾는 날", "관계 에너지에서 명확함이 필요합니다"],
-      neutral:   ["금성이 관계에 조용히 흐릅니다", "연결의 에너지가 잔잔하게 있습니다", "관계에서 금성의 흐름을 느껴보세요"],
+      strength:  ["금성이 관계 문을 엽니다. 좋아하는 마음이 숨기기 어렵습니다", "끌림이 선명해집니다. 애매하게 굴수록 더 티 납니다", "관계 운이 올라옵니다. 다정함도 행동해야 의미가 있습니다"],
+      challenge: ["금성의 긴장이 애매한 관계를 못 버티게 합니다", "원하는 것과 참는 것 사이, 오늘은 답을 미루기 어렵습니다", "관계의 모호함이 불편해집니다. 선을 분명히 해야 합니다"],
+      neutral:   ["금성이 잔잔하게 관계를 흔듭니다", "표면은 조용해도, 관계 에너지는 이미 움직입니다", "관계 온도를 세밀하게 읽어야 하는 금성의 날"],
     },
     Mars: {
-      strength:  ["화성이 관계에 행동 에너지를 불어넣습니다", "행동으로 관계를 움직이는 날", "열정과 추진력이 관계를 깨웁니다"],
-      challenge: ["화성이 관계에 마찰을 만들고 있습니다", "충동보다 의도로 관계를 이끄는 날", "긴장이 오늘 관계의 시험대입니다"],
-      neutral:   ["화성 에너지가 관계에 흐릅니다", "관계에서 행동 신호가 감지됩니다", "화성이 관계의 방향을 가리킵니다"],
+      strength:  ["화성이 관계를 밀어붙입니다. 머뭇거리면 타이밍을 놓칩니다", "행동하는 쪽이 관계 흐름을 가져갑니다", "열정이 관계를 깨웁니다. 정지 상태가 오래 안 갑니다"],
+      challenge: ["화성이 관계를 날카롭게 만듭니다. 감정보다 의도를 붙잡으세요", "밀어붙이는 힘이 커집니다. 방향 없이 쓰면 바로 부딪힙니다", "긴장이 관계를 시험합니다. 반응보다 조율이 필요합니다"],
+      neutral:   ["화성 에너지가 관계에 속도를 붙입니다", "작은 행동 하나가 관계 판을 바꿀 수 있습니다", "관계에서 먼저 움직이는 사람이 흐름을 잡습니다"],
     },
     Moon: {
-      strength:  ["달이 오늘 감정적 연결을 열어줍니다", "내면의 파장이 관계를 부드럽게 합니다", "감정이 관계와 자연스럽게 연결됩니다"],
-      challenge: ["달의 파동이 관계에 영향을 줍니다", "감정 기복이 관계에 반영되는 날", "내면의 긴장이 관계 표면에 나타납니다"],
-      neutral:   ["달이 관계에 조용한 흐름을 만듭니다", "감정의 조수가 관계 에너지를 조율합니다", "달의 흐름이 관계에 스며듭니다"],
+      strength:  ["달이 관계의 속마음을 끌어올립니다", "감정적 연결이 깊어집니다. 오늘은 무심한 척이 안 통합니다", "관계의 표정이 마음에서 먼저 결정됩니다"],
+      challenge: ["달의 파동이 관계를 예민하게 만듭니다", "서운함이 크게 들릴 수 있습니다. 감정 번역이 필요한 날입니다", "내면의 흔들림이 관계 표면으로 바로 올라옵니다"],
+      neutral:   ["달이 관계 온도를 잔잔하게 조율합니다", "표현보다 분위기가 먼저 말하는 날입니다", "관계의 미세한 감정 신호를 읽어야 합니다"],
     },
     Saturn: {
-      strength:  ["토성이 관계에 진지한 에너지를 더합니다", "관계에서 구조와 신뢰가 강화됩니다", "책임이 관계를 단단하게 만드는 날"],
-      challenge: ["토성이 관계에 현실적 무게를 올려놓습니다", "관계에서 책임과 경계가 시험받습니다", "토성의 긴장 — 관계의 현실을 직면하는 날"],
-      neutral:   ["토성이 관계에 안정적 흐름을 만듭니다", "관계에서 현실적 점검이 유익합니다", "구조가 관계를 지지하는 날"],
+      strength:  ["토성이 관계를 가볍게 두지 않게 만듭니다", "책임 있는 태도가 관계 신뢰를 키웁니다", "오래 갈 관계와 아닌 관계가 구분되는 날"],
+      challenge: ["토성이 관계의 현실을 정면에 세웁니다", "좋아하는 마음만으로 버티기 어려운 구조가 드러납니다", "경계와 책임이 시험받습니다. 애매함은 오래 못 갑니다"],
+      neutral:   ["토성이 관계의 구조를 점검하게 합니다", "감정보다 관계의 기반을 보게 되는 날", "관계를 오래 가게 할 조건을 살피게 됩니다"],
     },
     Jupiter: {
-      strength:  ["목성이 오늘 관계 에너지를 확장합니다", "사랑과 연결에 행운의 흐름이 있습니다", "관계가 넓어지는 목성의 날"],
-      challenge: ["목성의 과잉이 관계 기대를 높입니다", "큰 기대와 현실 사이 균형이 필요합니다", "관계에서 과잉 확장의 유혹이 있습니다"],
-      neutral:   ["목성이 관계의 가능성을 열어줍니다", "관계에서 새로운 가능성을 탐색하는 날", "목성의 흐름이 관계에 스며듭니다"],
+      strength:  ["목성이 관계 판을 넓힙니다. 숨기던 호감도 커집니다", "사랑이 부풀어 오릅니다. 좋은 기회도 먼저 잡는 쪽 몫입니다", "연결의 스케일이 커집니다. 관계가 한 단계 확장됩니다"],
+      challenge: ["목성이 기대를 너무 키웁니다. 환상과 가능성을 구분하세요", "좋은 상상만으로는 관계가 자라지 않습니다", "관계에서 과장된 기대를 조율해야 하는 날"],
+      neutral:   ["목성이 관계의 가능성을 슬쩍 열어둡니다", "지금 관계는 생각보다 더 멀리 갈 수 있습니다", "관계 판을 넓혀 보는 상상이 유효한 날"],
     },
   },
   "사고·표현": {

@@ -27,19 +27,19 @@ export async function PATCH(request: Request, { params }: Params) {
 
   switch (action) {
     case "accept":
-      ok = acceptFriend(claims.userId, otherUserId);
+      ok = await acceptFriend(claims.userId, otherUserId);
       if (ok) logFriendEvent(claims.userId, "friend_request_accepted", { otherUserId });
       break;
     case "block":
-      blockFriend(claims.userId, otherUserId);
+      await blockFriend(claims.userId, otherUserId);
       logFriendEvent(claims.userId, "friend_blocked", { otherUserId });
       ok = true;
       break;
     case "unblock":
-      ok = unblockFriend(claims.userId, otherUserId);
+      ok = await unblockFriend(claims.userId, otherUserId);
       break;
     case "remove":
-      ok = removeFriend(claims.userId, otherUserId);
+      ok = await removeFriend(claims.userId, otherUserId);
       if (ok) logFriendEvent(claims.userId, "friend_removed", { otherUserId });
       break;
     default:
@@ -60,6 +60,6 @@ export async function DELETE(_req: Request, { params }: Params) {
   if (!claims) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { userId: otherUserId } = await params;
-  const ok = removeFriend(claims.userId, otherUserId);
+  const ok = await removeFriend(claims.userId, otherUserId);
   return NextResponse.json({ ok });
 }

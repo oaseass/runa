@@ -1,4 +1,3 @@
-import Link from "next/link";
 import BackButton from "@/components/BackButton";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
@@ -10,7 +9,14 @@ import {
   isValidProductId,
   getLatestPaidOrderByProduct,
 } from "@/lib/server/order-store";
-import { TossPaymentWidget } from "@/components/TossPaymentWidget";
+import {
+  isAnnualReportProductId,
+  isAreaReportProductId,
+  isVoidCreditPackProductId,
+  isVipCheckoutProductId,
+} from "@/lib/products";
+import { getUnifiedPurchaseStateSafe } from "@/lib/server/purchase-state";
+import { CheckoutPurchasePanel } from "@/components/store/CheckoutPurchasePanel";
 
 export default async function StoreCheckoutPage({
   searchParams,
@@ -33,33 +39,73 @@ export default async function StoreCheckoutPage({
     redirect(`/account-access?next=/store/checkout?product=${productId}`);
   }
 
-  // If already paid, jump straight to the result
-  const alreadyPaid = getLatestPaidOrderByProduct(claims.userId, productId);
-  if (alreadyPaid) {
-    if (productId === "membership") redirect("/insight/today");
-    redirect(`/store/report/${alreadyPaid.id}`);
+  const purchaseState = getUnifiedPurchaseStateSafe(claims.userId);
+
+  if (isVipCheckoutProductId(productId) && purchaseState?.isVip) {
+    redirect("/home");
   }
 
-  // Reuse existing pending order for this product (prevents duplicate orders on refresh)
+  if (isAnnualReportProductId(productId) && purchaseState?.annualReportOwned) {
+    redirect("/store/report/yearly");
+  }
+
+  if (isAreaReportProductId(productId) && purchaseState?.areaReportOwned) {
+    redirect("/store/report/area");
+  }
+
+  // If already paid, jump straight to the result
+  let alreadyPaid = null;
+  try {
+    alreadyPaid = getLatestPaidOrderByProduct(claims.userId, productId);
+  } catch (error) {
+    console.error("[store/checkout] paid-order lookup fallback", error);
+  }
+
+  if (alreadyPaid) {
+    if (isVipCheckoutProductId(productId)) redirect("/home");
+    if (isAnnualReportProductId(productId) || isAreaReportProductId(productId)) {
+      redirect(`/store/report/${alreadyPaid.id}`);
+    }
+    if (isVoidCreditPackProductId(productId)) {
+      redirect("/void");
+    }
+  }
+
+  // Reuse an existing pending order when one is already encoded in the URL.
   const requestedOrderId = params.order;
-  const orderId = (() => {
-    if (requestedOrderId) {
+  let initialOrderId: string | undefined;
+  if (requestedOrderId) {
+    try {
       const existing = getOrder(requestedOrderId);
       const isReusable =
         existing &&
         existing.userId === claims.userId &&
         existing.productId === productId &&
         existing.status === "pending";
-      if (isReusable) return requestedOrderId;
+      if (isReusable) {
+        initialOrderId = requestedOrderId;
+      }
+    } catch (error) {
+      console.error("[store/checkout] pending-order lookup fallback", error);
     }
-
-    const fresh = createOrder(claims.userId, productId);
-    redirect(`/store/checkout?product=${productId}&order=${fresh.id}`);
-  })();
+  }
 
   // Dev mode: Skip payment and go directly to success
   const skipPayment = process.env.SKIP_PAYMENT === "true" || process.env.NEXT_PUBLIC_SKIP_PAYMENT === "true";
   if (skipPayment) {
+    let orderId = initialOrderId;
+    if (!orderId) {
+      try {
+        orderId = createOrder(claims.userId, productId).id;
+      } catch (error) {
+        console.error("[store/checkout] skip-payment order creation failed", error);
+        redirect(
+          "/payment/fail?code=ORDER_CREATE_FAILED&message=" +
+            encodeURIComponent("주문 정보를 준비하지 못했습니다."),
+        );
+      }
+    }
+
     const dummyPaymentKey = `test_${orderId}`;
     redirect(
       `/payment/success?paymentKey=${dummyPaymentKey}&orderId=${orderId}&amount=${product.amount}`,
@@ -68,26 +114,7 @@ export default async function StoreCheckoutPage({
     return null;
   }
 
-  const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
-  if (!clientKey || clientKey.startsWith("test_ck_placeholder")) {
-    return (
-      <main className="screen luna-article-screen">
-        <article className="luna-article-wrap">
-          <BackButton />
-          <div className="luna-store-checkout-notice">
-            <p className="luna-store-checkout-notice-title">결제 미연동</p>
-            <p>
-              <code>NEXT_PUBLIC_TOSS_CLIENT_KEY</code> 환경 변수에
-              토스페이먼츠 테스트 클라이언트 키를 입력해 주세요.
-            </p>
-            <Link href="https://developers.tosspayments.com/" className="luna-store-checkout-notice-link" target="_blank" rel="noopener noreferrer">
-              토스페이먼츠 개발자 센터 →
-            </Link>
-          </div>
-        </article>
-      </main>
-    );
-  }
+  const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY ?? null;
 
   return (
     <main className="screen luna-article-screen">
@@ -121,21 +148,18 @@ export default async function StoreCheckoutPage({
           </div>
         </section>
 
-        {/* TossPayments widget */}
+        {/* Native app purchase or TossPayments widget */}
         <section className="luna-article-section">
-          <TossPaymentWidget
+          <CheckoutPurchasePanel
+            productId={productId}
+            orderId={initialOrderId}
+            amount={product.amount}
+            productName={product.name}
             clientKey={clientKey}
             customerKey={claims.userId}
-            orderId={orderId!}
-            amount={product.amount}
-            orderName={product.name}
             customerName={claims.username}
           />
         </section>
-
-        <p className="luna-settings-note" style={{ marginTop: "1rem" }}>
-          결제는 토스페이먼츠가 안전하게 처리합니다. 테스트 모드에서는 실제 결제가 이루어지지 않습니다.
-        </p>
       </article>
     </main>
   );

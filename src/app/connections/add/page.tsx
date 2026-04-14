@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef, useCallback } from "react";
+import { useMemo, useState, useRef, useCallback, useEffect } from "react";
 import { addConnectionAction } from "../_actions/addConnection";
 
 /** crypto.randomUUID() requires secure context; fallback for HTTP/LAN dev */
@@ -24,7 +24,11 @@ type PlaceSuggestion = {
 export default function ConnectionsAddPage() {
   const [name, setName]           = useState("");
   const [birthDate, setBirthDate] = useState("");
-  const [birthTime, setBirthTime] = useState("");
+  const [birthTimeMeridiem, setBirthTimeMeridiem] = useState("AM");
+  const [birthTimeHour, setBirthTimeHour] = useState("07");
+  const [birthTimeMinute, setBirthTimeMinute] = useState("30");
+  const [timeKnown, setTimeKnown] = useState(false);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
 
   // Location state
   const [locationQuery, setLocationQuery]     = useState("");
@@ -40,6 +44,37 @@ export default function ConnectionsAddPage() {
 
   const debounceRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionToken  = useRef(randomUUID());
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    setErrorCode(params.get("error"));
+  }, []);
+
+  const birthTime = useMemo(() => {
+    if (!timeKnown) {
+      return "";
+    }
+
+    const meridiemLabel = birthTimeMeridiem === "AM" ? "오전" : "오후";
+    return `${meridiemLabel} ${birthTimeHour}:${birthTimeMinute}`;
+  }, [birthTimeHour, birthTimeMeridiem, birthTimeMinute, timeKnown]);
+
+  const errorMessage = useMemo(() => {
+    switch (errorCode) {
+      case "name":
+        return "이름을 확인해 주세요.";
+      case "date":
+        return "생년월일 형식을 다시 확인해 주세요.";
+      case "save":
+        return "해석을 저장하는 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.";
+      default:
+        return null;
+    }
+  }, [errorCode]);
 
   // Autocomplete query
   const handleLocationInput = useCallback((value: string) => {
@@ -153,29 +188,107 @@ export default function ConnectionsAddPage() {
               id="conn-birth-date"
               name="birthDate"
               className="luna-add-input"
-              type="text"
-              placeholder="1995. 04. 22"
+              type="date"
+              placeholder="1995-04-22"
               value={birthDate}
               onChange={(e) => setBirthDate(e.target.value)}
-              inputMode="numeric"
               required
             />
           </div>
 
           {/* Birth time (optional) */}
           <div className="luna-add-field">
-            <label className="luna-add-label" htmlFor="conn-birth-time">
+            <label className="luna-add-label" htmlFor="conn-birth-time-meridiem">
               출생 시간
               <span style={{ opacity: 0.46, marginLeft: "0.4rem" }}>선택</span>
             </label>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "auto 1fr 1fr",
+                gap: "0.7rem",
+                alignItems: "center",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setTimeKnown((current) => !current)}
+                style={{
+                  minHeight: "2.6rem",
+                  padding: "0 0.9rem",
+                  borderRadius: "999px",
+                  border: timeKnown ? "1px solid rgba(20,21,22,0.46)" : "1px solid rgba(20,21,22,0.16)",
+                  background: timeKnown ? "rgba(20,21,22,0.08)" : "transparent",
+                  color: "rgba(20,21,22,0.82)",
+                  fontSize: "0.82rem",
+                  cursor: "pointer",
+                }}
+              >
+                {timeKnown ? "시간 입력 중" : "출생 시간 선택"}
+              </button>
+
+              <select
+                id="conn-birth-time-meridiem"
+                value={birthTimeMeridiem}
+                onChange={(e) => setBirthTimeMeridiem(e.target.value)}
+                disabled={!timeKnown}
+                style={{
+                  minHeight: "2.9rem",
+                  border: "none",
+                  borderBottom: "1px solid rgba(20,21,22,0.16)",
+                  background: "transparent",
+                  fontSize: "1rem",
+                  color: "rgba(20,21,22,0.88)",
+                  outline: "none",
+                }}
+              >
+                <option value="AM">오전</option>
+                <option value="PM">오후</option>
+              </select>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.7rem" }}>
+                <select
+                  value={birthTimeHour}
+                  onChange={(e) => setBirthTimeHour(e.target.value)}
+                  disabled={!timeKnown}
+                  style={{
+                    minHeight: "2.9rem",
+                    border: "none",
+                    borderBottom: "1px solid rgba(20,21,22,0.16)",
+                    background: "transparent",
+                    fontSize: "1rem",
+                    color: "rgba(20,21,22,0.88)",
+                    outline: "none",
+                  }}
+                >
+                  {Array.from({ length: 12 }, (_, idx) => String(idx + 1).padStart(2, "0")).map((value) => (
+                    <option key={value} value={value}>{value}시</option>
+                  ))}
+                </select>
+                <select
+                  value={birthTimeMinute}
+                  onChange={(e) => setBirthTimeMinute(e.target.value)}
+                  disabled={!timeKnown}
+                  style={{
+                    minHeight: "2.9rem",
+                    border: "none",
+                    borderBottom: "1px solid rgba(20,21,22,0.16)",
+                    background: "transparent",
+                    fontSize: "1rem",
+                    color: "rgba(20,21,22,0.88)",
+                    outline: "none",
+                  }}
+                >
+                  {Array.from({ length: 12 }, (_, idx) => String(idx * 5).padStart(2, "0")).map((value) => (
+                    <option key={value} value={value}>{value}분</option>
+                  ))}
+                </select>
+              </div>
+            </div>
             <input
-              id="conn-birth-time"
               name="birthTime"
-              className="luna-add-input"
-              type="text"
-              placeholder="오전 07:30"
+              type="hidden"
               value={birthTime}
-              onChange={(e) => setBirthTime(e.target.value)}
             />
             <p className="luna-add-hint">시간이 정확할수록 해석의 정밀도가 높아집니다.</p>
           </div>
@@ -239,6 +352,11 @@ export default function ConnectionsAddPage() {
             style={{ marginTop: "1.6rem" }}
             aria-label="Submit actions"
           >
+            {errorMessage ? (
+              <p style={{ margin: 0, fontSize: "0.8rem", color: "#b42318", lineHeight: 1.5 }}>
+                {errorMessage}
+              </p>
+            ) : null}
             <button
               type="submit"
               className="luna-black-cta"

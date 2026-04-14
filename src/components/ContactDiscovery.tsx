@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { normalizePhone } from "@/lib/phone-normalize";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -53,6 +54,8 @@ type SearchResult = {
   friendshipStatus: string;
 };
 
+const CONTACT_MATCH_BATCH_SIZE = 100;
+
 // ── Capacitor bridge types ─────────────────────────────────────────────────────
 
 interface CapContactPhone { number: string }
@@ -64,14 +67,35 @@ interface CapContactsPlugin {
 }
 interface CapacitorGlobal {
   isNativePlatform?: () => boolean;
+  getPlatform?: () => string;
   Plugins?: Record<string, unknown>;
+}
+
+function getCapacitorRuntime(): CapacitorGlobal | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const globalCapacitor = (window as typeof window & { Capacitor?: CapacitorGlobal }).Capacitor;
+  return globalCapacitor ?? (Capacitor as CapacitorGlobal);
+}
+
+function hasNativeContactsBridge(cap?: CapacitorGlobal | null) {
+  if (!cap) return false;
+
+  if (cap.isNativePlatform?.()) return true;
+
+  const platform = cap.getPlatform?.();
+  if (platform === "ios" || platform === "android") return true;
+
+  return Boolean(cap.Plugins?.Contacts);
 }
 
 function getContactsPlugin(): CapContactsPlugin | null {
   if (typeof window === "undefined") return null;
-  const cap = (window as typeof window & { Capacitor?: CapacitorGlobal }).Capacitor;
-  if (!cap?.isNativePlatform?.()) return null;
-  const p = cap.Plugins?.Contacts;
+  const cap = getCapacitorRuntime();
+  if (!hasNativeContactsBridge(cap)) return null;
+  const p = cap?.Plugins?.Contacts;
   return (p as CapContactsPlugin) ?? null;
 }
 
@@ -234,10 +258,10 @@ export default function ContactDiscovery({
 
     // 4. Match against LUNA users
     setStep("matching");
-    // Batch: max 500 per request
+    // Keep batches small to avoid large body failures in remote runtimes.
     const batches: typeof contacts[] = [];
-    for (let i = 0; i < contacts.length; i += 500) {
-      batches.push(contacts.slice(i, i + 500));
+    for (let i = 0; i < contacts.length; i += CONTACT_MATCH_BATCH_SIZE) {
+      batches.push(contacts.slice(i, i + CONTACT_MATCH_BATCH_SIZE));
     }
 
     const allMatched: MatchedUser[] = [];
@@ -250,12 +274,35 @@ export default function ContactDiscovery({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ contacts: batch }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        if (!res.ok) {
+          if (res.status === 401) {
+            throw new Error("AUTH_REQUIRED");
+          }
+
+          if (res.status === 413) {
+            throw new Error("CONTACT_BATCH_TOO_LARGE");
+          }
+
+          throw new Error(`HTTP ${res.status}`);
+        }
+
         const data = await res.json() as MatchResult;
         allMatched.push(...data.matched);
         allUnregistered.push(...data.unregistered);
-      } catch {
+      } catch (matchError) {
         setStep("error");
+
+        if (matchError instanceof Error && matchError.message === "AUTH_REQUIRED") {
+          setError("로그인이 끊어졌어요. 다시 로그인한 뒤 시도해 주세요.");
+          return;
+        }
+
+        if (matchError instanceof Error && matchError.message === "CONTACT_BATCH_TOO_LARGE") {
+          setError("연락처가 너무 많아 한 번에 읽지 못했어요. 다시 시도해 주세요.");
+          return;
+        }
+
         setError("서버 요청 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요.");
         return;
       }

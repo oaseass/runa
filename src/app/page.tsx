@@ -8,20 +8,26 @@ export default function HomePage() {
 
   useEffect(() => {
     void (async () => {
-      await new Promise((resolve) => window.setTimeout(resolve, 2200));
+      const minimumIntroDelay = new Promise((resolve) => window.setTimeout(resolve, 4000));
 
-      try {
-        const response = await fetch("/api/auth/session/me", {
-          method: "GET",
-          cache: "no-store",
-        });
+      const sessionCheck = (async () => {
+        try {
+          const response = await fetch("/api/auth/session/me", {
+            method: "GET",
+            cache: "no-store",
+          });
 
-        if (response.ok) {
-          router.replace("/home");
-          return;
+          return response.ok;
+        } catch {
+          return false;
         }
-      } catch {
-        // network error → treat as unauthenticated
+      })();
+
+      const [, isAuthenticated] = await Promise.all([minimumIntroDelay, sessionCheck]);
+
+      if (isAuthenticated) {
+        router.replace("/home");
+        return;
       }
 
       router.replace("/start");
@@ -43,53 +49,58 @@ export default function HomePage() {
         gap: "2rem",
       }}
     >
-      {/* 배경: 동일 GIF 블러 처리로 분위기만 */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/luna/assets/splash/galaxy.gif"
+        src="/luna/assets/splash/intro-background.gif"
         alt=""
+        aria-hidden="true"
+        className="luna-intro-bg"
+      />
+
+      <div
         aria-hidden="true"
         style={{
           position: "absolute",
-          top: "50%", left: "50%",
-          transform: "translate(-50%, -50%) scale(3)",
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          filter: "blur(28px) brightness(0.45) saturate(1.6)",
-          opacity: 0.9,
+          inset: 0,
+          background: "linear-gradient(180deg, rgba(0,0,0,0.03), rgba(0,0,0,0.14) 58%, rgba(0,0,0,0.34))",
         }}
       />
 
-      {/* 중앙 갤럭시 이미지 — 자연 크기 유지 */}
       <div
-        className="luna-intro-brand"
         style={{
           position: "relative",
           zIndex: 1,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: "1.6rem",
+          width: "min(100%, 28rem)",
+          paddingInline: "1.25rem",
+          boxSizing: "border-box",
+          gap: "1.4rem",
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/luna/assets/splash/galaxy.gif"
-          alt=""
-          aria-hidden="true"
-          style={{
-            width: "min(72vw, 280px)",
-            height: "auto",
-            borderRadius: "50%",
-            objectFit: "cover",
-            aspectRatio: "1 / 1",
-            boxShadow: "0 0 60px rgba(140, 100, 255, 0.25), 0 0 120px rgba(80, 60, 200, 0.15)",
-          }}
-          className="luna-intro-orb"
-        />
+        <div className="luna-intro-object-shell" aria-hidden="true">
+          <div className="luna-intro-object-glow" />
+          <div className="luna-intro-object-ring" />
+          <div className="luna-intro-object">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/luna/assets/splash/intro-blackhole-animated.webp"
+              alt=""
+              className="luna-intro-orb-media"
+            />
+          </div>
+        </div>
 
-        {/* 브랜드 텍스트 */}
+        <div className="luna-intro-brand"
+          style={{
+            position: "relative",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "0.75rem",
+          }}
+        >
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
           <p style={{
             margin: 0,
@@ -97,20 +108,23 @@ export default function HomePage() {
             fontWeight: 400,
             letterSpacing: "0.34em",
             textTransform: "uppercase",
-            color: "rgba(255,255,255,0.38)",
+            color: "rgba(255,255,255,0.72)",
+            textShadow: "0 2px 12px rgba(0,0,0,0.32)",
           }}>
             your stellar mirror
           </p>
           <h1 style={{
             margin: 0,
-            fontSize: "clamp(3rem, 16vw, 5rem)",
+            fontSize: "clamp(2.8rem, 15vw, 5rem)",
             fontWeight: 100,
-            letterSpacing: "0.42em",
-            paddingLeft: "0.42em", /* letter-spacing 보정 */
+            letterSpacing: "0.26em",
+            paddingLeft: "0.26em",
             textTransform: "uppercase",
             color: "#fff",
             lineHeight: 1,
-            textShadow: "0 0 48px rgba(180,150,255,0.4), 0 0 100px rgba(120,90,220,0.2)",
+            width: "100%",
+            textAlign: "center",
+            textShadow: "0 0 36px rgba(255,169,102,0.14), 0 0 100px rgba(0,0,0,0.36)",
           }}>
             LUNA
           </h1>
@@ -119,11 +133,13 @@ export default function HomePage() {
             fontSize: "0.82rem",
             fontWeight: 300,
             letterSpacing: "0.04em",
-            color: "rgba(255,255,255,0.52)",
+            color: "rgba(255,255,255,0.84)",
             lineHeight: 1.75,
+            textShadow: "0 2px 16px rgba(0,0,0,0.4)",
           }}>
             별의 언어로 읽는 오늘의 나
           </p>
+        </div>
         </div>
       </div>
 

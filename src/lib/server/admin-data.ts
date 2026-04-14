@@ -107,7 +107,17 @@ function mapStoredAccountToAdminUser(
 
 export async function getAdminUsers(): Promise<AdminUser[]> {
   const users = await getAdminUsersFiltered();
-  return users.map(({ totalPaid: _totalPaid, isVip: _isVip, vipProductId: _vipProductId, vipPaidAt: _vipPaidAt, ...user }) => user);
+  return users.map((user) => ({
+    id: user.id,
+    username: user.username,
+    phoneNumber: user.phoneNumber,
+    createdAt: user.createdAt,
+    birthDate: user.birthDate,
+    birthPlaceText: user.birthPlaceText,
+    hasProfile: user.hasProfile,
+    paidOrderCount: user.paidOrderCount,
+    voidCount: user.voidCount,
+  }));
 }
 
 /* ── Orders ─────────────────────────────────────────────────── */

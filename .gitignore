@@ -18,5 +18,9 @@ ios/build
 *.aab
 *.ipa
 *.zip
+*.jks
+*.keystore
+android/keystore/
 /Co*Star*/
 /Co*Star*.apk+
+.env*.local

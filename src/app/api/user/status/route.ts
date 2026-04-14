@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifySessionToken, AUTH_COOKIE_NAME } from "@/lib/server/auth-session";
+import { getUnifiedPurchaseState } from "@/lib/server/purchase-state";
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -19,23 +20,17 @@ export async function GET() {
     process.env.NEXT_PUBLIC_SKIP_PAYMENT === "true";
 
   try {
-    const [{ getPaidProductIds }, { checkVip, getEntitlement }] = await Promise.all([
-      import("@/lib/server/order-store"),
-      import("@/lib/server/entitlement-store"),
-    ]);
-
-    const paidIds = getPaidProductIds(claims.userId);
-    const isVip = isDevSkip || checkVip(claims.userId);
-    const isPro = isDevSkip || isVip || paidIds.has("membership");
-    const ent = getEntitlement(claims.userId);
+    const purchaseState = getUnifiedPurchaseState(claims.userId);
+    const isVip = isDevSkip || purchaseState.isVip;
+    const isPro = isVip;
 
     return NextResponse.json({
       isPro,
       isVip,
       username: claims.username,
-      voidCredits: ent.voidCredits,
-      annualReportOwned: ent.annualReportOwned > 0,
-      areaReportsOwned: ent.areaReportsOwned > 0,
+      voidCredits: purchaseState.voidCredits,
+      annualReportOwned: purchaseState.annualReportOwned,
+      areaReportsOwned: purchaseState.areaReportOwned,
     }, {
       headers: { "Cache-Control": "no-store" },
     });

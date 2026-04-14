@@ -1,0 +1,15 @@
+{
+  "appId": "com.luna.admin",
+  "appName": "LUNA Admin",
+  "webDir": "native-shell",
+  "server": {
+    "url": "https://runa.co.kr/admin/login",
+    "cleartext": false,
+    "androidScheme": "https"
+  },
+  "android": {
+    "adjustMarginsForEdgeToEdge": "force",
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": true
+  }
+}

@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import VipBadge from "@/components/VipBadge";
+import { NativePurchaseRestoreCard } from "@/components/store/NativePurchaseRestoreCard";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
 import {
   getDomainReadingsForUser,
@@ -12,7 +13,7 @@ import {
   getTodayInterpretationForUser,
   getTransitDeepListForUser,
 } from "@/lib/server/chart-runtime";
-import { getPaidProductIds } from "@/lib/server/order-store";
+import { getUnifiedPurchaseStateSafe } from "@/lib/server/purchase-state";
 import {
   getPlanetReadings,
   SIGN_KO,
@@ -538,13 +539,13 @@ function SettingsTab({
         <div className="settings-list">
           {hasMembership ? (
             <div className="settings-row">
-              <span className="settings-row-label">LUNA 멤버십</span>
+              <span className="settings-row-label">LUNA VIP</span>
               <span className="settings-row-right">
                 <span className="settings-row-badge settings-row-badge--active">이용 중</span>
               </span>
             </div>
           ) : (
-            <SLinkRow label="LUNA 멤버십" value="가입하기" href="/shop" />
+            <SLinkRow label="LUNA VIP" value="가입하기" href="/shop" />
           )}
           {hasYearly ? (
             <div className="settings-row">
@@ -554,7 +555,7 @@ function SettingsTab({
               </span>
             </div>
           ) : (
-            <SLinkRow label="2026 연간 리포트" value="₩29,000" href="/shop" />
+            <SLinkRow label="2026 연간 리포트" value="₩3,000" href="/shop" />
           )}
           <SLinkRow label="Eros" value="무료" href="/eros/select" />
           {hasAreaReport ? (
@@ -565,19 +566,20 @@ function SettingsTab({
               </span>
             </div>
           ) : (
-            <SLinkRow label="영역 보고서" value="₩9,900" href="/store" />
+            <SLinkRow label="영역 보고서" value="₩3,000" href="/store" />
           )}
           {hasQuestionReport ? (
             <div className="settings-row">
-              <span className="settings-row-label">VOID 질문 리포트</span>
+              <span className="settings-row-label">VOID 크레딧</span>
               <span className="settings-row-right">
-                <span className="settings-row-badge settings-row-badge--active">구매 완료</span>
+                <span className="settings-row-badge settings-row-badge--active">보유 중</span>
               </span>
             </div>
           ) : (
-            <SLinkRow label="VOID 질문 리포트" value="₩4,900" href="/store" />
+            <SLinkRow label="VOID 크레딧" value="₩500 / 1회" href="/shop" />
           )}
         </div>
+        <NativePurchaseRestoreCard reloadOnSuccess />
       </section>
 
       {/* ── E. 지원 ── */}
@@ -654,11 +656,11 @@ export default async function MePage({
 
   // Payment check
   const skipPayment       = process.env.SKIP_PAYMENT === "true" || process.env.NEXT_PUBLIC_SKIP_PAYMENT === "true";
-  const paidIds           = skipPayment ? null : getPaidProductIds(session.userId);
-  const hasMembership     = skipPayment || (paidIds?.has("membership") ?? false);
-  const hasYearly         = skipPayment || (paidIds?.has("yearly") ?? false);
-  const hasAreaReport     = skipPayment || (paidIds?.has("area") ?? false);
-  const hasQuestionReport = skipPayment || (paidIds?.has("question") ?? false);
+  const purchaseState     = skipPayment ? null : getUnifiedPurchaseStateSafe(session.userId);
+  const hasMembership     = skipPayment || (purchaseState?.isVip ?? false);
+  const hasYearly         = skipPayment || (purchaseState?.annualReportOwned ?? false);
+  const hasAreaReport     = skipPayment || (purchaseState?.areaReportOwned ?? false);
+  const hasQuestionReport = skipPayment || (purchaseState?.hasVoidCredits ?? false);
   const isPaid            = hasMembership || hasYearly;
 
   const readings    = getPlanetReadings(chart);

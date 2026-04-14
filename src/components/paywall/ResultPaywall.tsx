@@ -34,7 +34,7 @@ const CONTEXT_COPY: Record<ResultPaywallContext, { title: string; body: string; 
   },
   generic: {
     title:    "더 깊은 리딩을 원하세요?",
-    body:     "VIP로 모든 리딩·보고서·VOID 탐색을 무제한 이용해 보세요.",
+    body:     "VIP로 깊이 보기와 매달 지급되는 VOID 30회 크레딧을 이용해 보세요.",
     cta:      `VIP 시작 ${formatAmount(SKUS[VIP_MONTHLY].amount)}/월`,
     productId: VIP_MONTHLY,
   },

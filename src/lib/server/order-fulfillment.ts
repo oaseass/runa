@@ -24,6 +24,7 @@ import {
   setOrderReportJson,
   type Order,
 } from "./order-store";
+import { sendAnalysisDonePush } from "./push-service";
 import { generateVoidAnalysis } from "./void-analysis";
 import { createVoidAnalysisRequest, updateVoidAnalysisRequest } from "./void-store";
 import { generateYearlyReport } from "./yearly-report";
@@ -110,21 +111,56 @@ export type FinalizePaidOrderOptions = {
   skipReceiptRecording?: boolean;
 };
 
-async function ensureOrderReport(order: Order, userId: string) {
+type AnalysisDonePushPayload = {
+  title: string;
+  body: string;
+  deepLink: string;
+  dedupeKey: string;
+};
+
+function getAnalysisDonePushPayload(order: Order): AnalysisDonePushPayload | null {
+  if (isAreaReportProductId(order.productId)) {
+    return {
+      title: "영역 리딩이 도착했어요",
+      body: "지금 열면 네 흐름이 가장 크게 흔들리는 영역을 바로 읽을 수 있어요.",
+      deepLink: `/store/report/${order.id}?campaign=analysis_done`,
+      dedupeKey: `analysis_done:${order.id}`,
+    };
+  }
+
+  if (isAnnualReportProductId(order.productId)) {
+    return {
+      title: "연간 리포트가 준비됐어요",
+      body: "올해 네 흐름을 길게 관통하는 장면이 정리됐어요. 지금 바로 열어봐요.",
+      deepLink: `/store/report/${order.id}?campaign=analysis_done`,
+      dedupeKey: `analysis_done:${order.id}`,
+    };
+  }
+
+  return null;
+}
+
+async function ensureOrderReport(order: Order, userId: string): Promise<AnalysisDonePushPayload | null> {
+  const pushPayload = getAnalysisDonePushPayload(order);
+
   if (isAreaReportProductId(order.productId)) {
     const report = await generateAreaReport(userId);
     if (report) {
       setOrderReportJson(order.id, JSON.stringify(report));
+      return pushPayload;
     }
-    return;
+    return null;
   }
 
   if (isAnnualReportProductId(order.productId) && !order.reportJson) {
     const report = await generateYearlyReport(userId);
     if (report) {
       setOrderReportJson(order.id, JSON.stringify(report));
+      return pushPayload;
     }
   }
+
+  return null;
 }
 
 async function ensureVoidAnalysis(order: Order, userId: string) {
@@ -206,8 +242,21 @@ export async function finalizePaidOrder(options: FinalizePaidOrderOptions) {
     });
   }
 
-  await ensureOrderReport(freshOrder, options.userId);
+  const analysisDonePush = await ensureOrderReport(freshOrder, options.userId);
   await ensureVoidAnalysis(freshOrder, options.userId);
+
+  if (analysisDonePush) {
+    try {
+      await sendAnalysisDonePush({
+        userId: options.userId,
+        title: analysisDonePush.title,
+        body: analysisDonePush.body,
+        deepLink: analysisDonePush.deepLink,
+        dedupeKey: analysisDonePush.dedupeKey,
+      });
+    } catch {
+    }
+  }
 
   const deliveredOrder = getOrder(order.id) ?? freshOrder;
 

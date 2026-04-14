@@ -15,32 +15,8 @@ import { cookies } from "next/headers";
 import { verifySessionToken } from "@/lib/server/auth-session";
 import { recordIapReceipt, grantFromSku, isTransactionProcessed, getEntitlement } from "@/lib/server/entitlement-store";
 import { isValidSkuId } from "@/lib/products";
-import type { SkuId } from "@/lib/products";
-
-// ── Apple Product ID → SkuId map ─────────────────────────────────────────────
-
-const APPLE_TO_SKU: Record<string, SkuId> = {
-  "com.luna.vip.monthly":   "vip_monthly",
-  "com.luna.vip.yearly":    "vip_yearly",
-  "com.luna.report.annual": "annual_report",
-  "com.luna.report.area":   "area_reading",
-  "com.luna.void.pack3":    "void_pack_3",
-  "com.luna.void.pack10":   "void_pack_10",
-};
-
-// ── StoreKit 2: decode JWS payload (no signature verification — use Apple API) ─
-
-function decodeJwsPayload(jws: string): Record<string, unknown> | null {
-  try {
-    const parts = jws.split(".");
-    if (parts.length !== 3) return null;
-    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const json = Buffer.from(payload, "base64").toString("utf-8");
-    return JSON.parse(json) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
+import { assertOrderMatchesSku, finalizePaidOrder, getSkuRedirectPath, OrderFulfillmentError } from "@/lib/server/order-fulfillment";
+import { APPLE_TO_SKU, decodeJwsPayload } from "@/lib/server/apple-jws";
 
 // ── Apple server-side verification (StoreKit 2) ───────────────────────────────
 
@@ -144,7 +120,7 @@ export async function POST(request: Request) {
   const claims = token ? verifySessionToken(token) : null;
   if (!claims) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  let body: { signedTransactionInfo?: string; receiptData?: string };
+  let body: { signedTransactionInfo?: string; receiptData?: string; orderId?: string };
   try { body = await request.json(); } catch {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
@@ -168,15 +144,48 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unknown_product", productId: result.productId }, { status: 422 });
   }
 
+  if (body.orderId) {
+    try {
+      assertOrderMatchesSku(body.orderId, claims.userId, skuId);
+    } catch (error) {
+      const code = error instanceof OrderFulfillmentError ? error.code : "ORDER_VALIDATION_FAILED";
+      return NextResponse.json({ error: code }, { status: 422 });
+    }
+  }
+
   // Idempotency
+  let redirectTo: string | undefined = getSkuRedirectPath(skuId);
+
   if (isTransactionProcessed("apple", result.transactionId)) {
-    return NextResponse.json({ ok: true, skuId, alreadyProcessed: true, entitlement: getEntitlement(claims.userId) });
+    if (body.orderId) {
+      try {
+        const finalized = await finalizePaidOrder({
+          orderId: body.orderId,
+          userId: claims.userId,
+          paymentKey: result.transactionId,
+          paymentType: "APPLE_IAP",
+          providerRef: result.originalTransactionId ?? result.transactionId,
+          purchaseDate: result.purchaseDate ? new Date(result.purchaseDate) : new Date(),
+          skipEntitlementGrant: true,
+          skipReceiptRecording: true,
+        });
+        redirectTo = finalized.redirectTo;
+      } catch {
+        redirectTo = undefined;
+      }
+    }
+
+    return NextResponse.json({ ok: true, skuId, alreadyProcessed: true, entitlement: getEntitlement(claims.userId), redirectTo });
   }
 
   const purchasedAt = result.purchaseDate ? new Date(result.purchaseDate) : new Date();
   const expiresAt   = result.expiresDate  ? new Date(result.expiresDate)  : undefined;
 
-  grantFromSku(claims.userId, skuId, purchasedAt, expiresAt);
+  grantFromSku(claims.userId, skuId, purchasedAt, expiresAt, {
+    orderId: body.orderId,
+    transactionId: result.transactionId,
+    sourceType: "purchase",
+  });
 
   recordIapReceipt({
     userId:                claims.userId,
@@ -190,5 +199,24 @@ export async function POST(request: Request) {
     rawResponse:           JSON.stringify(result),
   });
 
-  return NextResponse.json({ ok: true, skuId, entitlement: getEntitlement(claims.userId) });
+  if (body.orderId) {
+    try {
+      const finalized = await finalizePaidOrder({
+        orderId: body.orderId,
+        userId: claims.userId,
+        paymentKey: result.transactionId,
+        paymentType: "APPLE_IAP",
+        providerRef: result.originalTransactionId ?? result.transactionId,
+        purchaseDate: purchasedAt,
+        skipEntitlementGrant: true,
+        skipReceiptRecording: true,
+      });
+      redirectTo = finalized.redirectTo;
+    } catch (error) {
+      const code = error instanceof OrderFulfillmentError ? error.code : "ORDER_FULFILLMENT_FAILED";
+      return NextResponse.json({ error: code }, { status: 422 });
+    }
+  }
+
+  return NextResponse.json({ ok: true, skuId, entitlement: getEntitlement(claims.userId), redirectTo });
 }

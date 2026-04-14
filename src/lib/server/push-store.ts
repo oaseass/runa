@@ -3,7 +3,7 @@ import { db } from "./db";
 
 export type PushPermissionState = "granted" | "denied" | "prompt" | "prompt-with-rationale" | "unknown";
 
-export type PushCampaign = "daily_reading" | "analysis_done";
+export type PushCampaign = "daily_reading" | "analysis_done" | "test";
 
 type PushDeviceRow = {
   id: string;
@@ -198,6 +198,24 @@ export function listAnalysisDonePushTargets(userId: string): PushUserTarget[] {
       AND d.permission_state = 'granted'
       AND d.notifications_enabled = 1
       AND COALESCE(p.notify_analysis_done, 1) = 1
+  `).all({ userId }) as PushUserTargetRow[];
+
+  return rows.map((row) => ({
+    deviceId: row.device_id,
+    token: row.token,
+    platform: row.platform,
+    timezone: normalizeTimezone(row.timezone),
+    locale: normalizeLocale(row.locale),
+  }));
+}
+
+export function listEnabledPushTargets(userId: string): PushUserTarget[] {
+  const rows = db.prepare(`
+    SELECT d.id AS device_id, d.token, d.platform, d.timezone, d.locale
+    FROM push_devices d
+    WHERE d.user_id = @userId
+      AND d.permission_state = 'granted'
+      AND d.notifications_enabled = 1
   `).all({ userId }) as PushUserTargetRow[];
 
   return rows.map((row) => ({

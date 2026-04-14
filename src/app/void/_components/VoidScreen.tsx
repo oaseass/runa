@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { useRouter, usePathname } from "next/navigation";
+import VoidPaywall from "@/components/paywall/VoidPaywall";
 import { useVoidEligibility } from "../_context/VoidEligibilityContext";
 import { createAnalysisRequestAction } from "../_actions/createAnalysisRequest";
 
@@ -131,11 +133,6 @@ const CATEGORY_CONFIG: Record<CategoryKey, CategoryConfig> = {
 
 const CATEGORY_KEYS: CategoryKey[] = ["self", "love", "work", "social"];
 
-const TOTAL_QUESTIONS = Object.values(CATEGORY_CONFIG).reduce(
-  (sum, c) => sum + c.questions.length,
-  0
-);
-
 /** Derives the active category from the current pathname. */
 function catFromPath(path: string): CategoryKey {
   for (const k of CATEGORY_KEYS) {
@@ -148,21 +145,36 @@ interface VoidScreenProps {
   defaultCategory?: CategoryKey;
 }
 
+function VoidSubmitButton({ canBuy, canSend }: { canBuy: boolean; canSend: boolean }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      className={`void-dock-buy${!canBuy || pending ? " void-dock-buy-off" : ""}`}
+      aria-label={canSend ? "분석 실행" : "AI 해석 구매"}
+      disabled={!canBuy || pending}
+    >
+      {pending ? "···" : canSend ? "보내기" : "구매"}
+    </button>
+  );
+}
+
 function VoidScreenContent({ category }: { category: CategoryKey }) {
   const router = useRouter();
-  const { chartAvailable, chartHash, canSend } = useVoidEligibility();
-  const [isPending, startTransition] = useTransition();
+  const pathname = usePathname();
+  const { chartAvailable, chartHash, canSend, isVip, voidCredits } = useVoidEligibility();
 
   const [selected, setSelected] = useState<number | null>(null);
   const [mode, setMode] = useState<ViewMode>("catalog");
   const [askValue, setAskValue] = useState("");
+  const [questionType, setQuestionType] = useState<"preset" | "custom">("custom");
+  const [showCreditPopup, setShowCreditPopup] = useState(false);
 
   const { questions, label } = CATEGORY_CONFIG[category];
 
   const askTrimmed = askValue.trim();
-  const presetQuestion = selected !== null ? questions[selected] : null;
-  // Custom input takes priority over preset; either enables BUY
-  const payload: string | null = askTrimmed || presetQuestion;
+  const payload: string | null = askTrimmed || null;
   const canBuy = Boolean(payload);
 
   const handleCategoryChange = (cat: CategoryKey) => {
@@ -180,20 +192,72 @@ function VoidScreenContent({ category }: { category: CategoryKey }) {
 
   const handleBuy = () => {
     if (!canBuy || !payload) return;
-    const type = askTrimmed ? "custom" : "preset";
+    if (!canSend) {
+      setShowCreditPopup(true);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
     if (canSend) {
-      const fd = new FormData();
-      fd.set("category", category);
-      fd.set("questionText", payload);
-      fd.set("questionType", type);
-      if (chartHash) fd.set("chartHash", chartHash);
-      startTransition(() => { void createAnalysisRequestAction(fd); });
-    } else {
-      const params = new URLSearchParams({ q: payload, cat: category, type });
-      if (chartHash) params.set("ch", chartHash);
-      router.push(`/void/checkout?${params.toString()}`);
+      window.sessionStorage.removeItem("void:auto-paywall-shown");
+      return;
     }
+
+    const params = new URLSearchParams(window.location.search);
+    const requestedPaywall = params.get("gate") === "no-credits" || params.get("paywall") === "1";
+    const autoShown = window.sessionStorage.getItem("void:auto-paywall-shown") === "1";
+    if (!requestedPaywall && autoShown) return;
+
+    window.sessionStorage.setItem("void:auto-paywall-shown", "1");
+    const timeoutId = window.setTimeout(() => {
+      setShowCreditPopup(true);
+
+      if (requestedPaywall) {
+        router.replace(pathname);
+      }
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [canSend, pathname, router]);
+
+  const creditBadgeText = isVip && voidCredits === 0 ? "0" : String(voidCredits);
+  const creditBadgeLabel = isVip
+    ? `VIP 이번 달 잔여 VOID 크레딧 ${voidCredits}회`
+    : `잔여 VOID 크레딧 ${voidCredits}회`;
+
+  const handleQuestionSelect = (index: number) => {
+    if (selected === index && questionType === "preset") {
+      setSelected(null);
+      setAskValue("");
+      setQuestionType("custom");
+      return;
+    }
+
+    const nextQuestion = questions[index];
+    setSelected(index);
+    setAskValue(nextQuestion);
+    setQuestionType("preset");
+  };
+
+  const handleAskValueChange = (nextValue: string) => {
+    setAskValue(nextValue);
+
+    if (selected === null) {
+      setQuestionType("custom");
+      return;
+    }
+
+    const currentPreset = questions[selected];
+    if (nextValue.trim() === currentPreset.trim()) {
+      setQuestionType("preset");
+      return;
+    }
+
+    setQuestionType("custom");
   };
 
   return (
@@ -235,11 +299,11 @@ function VoidScreenContent({ category }: { category: CategoryKey }) {
             <button
               type="button"
               className="void-badge"
-              onClick={() => setMode("share")}
-              aria-label={`공유 — 전체 ${TOTAL_QUESTIONS}개 질문`}
-              title="공유"
+              onClick={() => router.push("/shop")}
+              aria-label={creditBadgeLabel}
+              title={creditBadgeLabel}
             >
-              {TOTAL_QUESTIONS}
+              {creditBadgeText}
             </button>
           </div>
         )}
@@ -274,7 +338,7 @@ function VoidScreenContent({ category }: { category: CategoryKey }) {
               <button
                 type="button"
                 className={`void-question-btn${selected === i ? " void-question-btn-active" : ""}`}
-                onClick={() => setSelected(selected === i ? null : i)}
+                onClick={() => handleQuestionSelect(i)}
                 aria-pressed={selected === i}
               >
                 {q}
@@ -284,48 +348,74 @@ function VoidScreenContent({ category }: { category: CategoryKey }) {
         </ol>
       </div>
 
-      {/* Selected question preview strip — appears when preset chosen, no custom input */}
-      {presetQuestion && !askTrimmed && (
-        <div className="void-dock-preview" aria-live="polite">
-          <span className="void-dock-preview-label">선택됨</span>
-          <span className="void-dock-preview-text">{presetQuestion}</span>
+      {/* Fixed bottom dock — ASK input | BUY */}
+      {canSend ? (
+        <form action={createAnalysisRequestAction} className="void-dock" aria-label="질문 입력 및 구매">
+          <input type="hidden" name="category" value={category} />
+          <input type="hidden" name="questionText" value={payload ?? ""} />
+          <input type="hidden" name="questionType" value={questionType} />
+          {chartHash ? <input type="hidden" name="chartHash" value={chartHash} /> : null}
+          <div className="void-dock-ask">
+            <input
+              type="text"
+              className="void-dock-input"
+              value={askValue}
+              onChange={(e) => handleAskValueChange(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !canBuy) e.preventDefault(); }}
+              placeholder="무엇이든 물어보세요..."
+              aria-label="직접 질문 입력"
+            />
+            {!chartAvailable && (
+              <span className="void-dock-chart-notice">차트 연산 대기 중</span>
+            )}
+          </div>
+          <VoidSubmitButton canBuy={canBuy} canSend={canSend} />
+        </form>
+      ) : (
+        <div className="void-dock" role="group" aria-label="질문 입력 및 구매">
+          <div className="void-dock-ask">
+            <input
+              type="text"
+              className="void-dock-input"
+              value={askValue}
+              onChange={(e) => handleAskValueChange(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleBuy(); }}
+              placeholder="무엇이든 물어보세요..."
+              aria-label="직접 질문 입력"
+            />
+            {!chartAvailable && (
+              <span className="void-dock-chart-notice">차트 연산 대기 중</span>
+            )}
+          </div>
           <button
             type="button"
-            className="void-dock-preview-clear"
-            onClick={() => setSelected(null)}
-            aria-label="선택 해제"
+            className={`void-dock-buy${!canBuy ? " void-dock-buy-off" : ""}`}
+            aria-label="AI 해석 구매"
+            disabled={!canBuy}
+            onClick={handleBuy}
           >
-            ✕
+            구매
           </button>
         </div>
       )}
 
-      {/* Fixed bottom dock — ASK input | BUY */}
-      <div className="void-dock" role="group" aria-label="질문 입력 및 구매">
-        <div className="void-dock-ask">
-          <input
-            type="text"
-            className="void-dock-input"
-            value={askValue}
-            onChange={(e) => setAskValue(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleBuy(); }}
-            placeholder={presetQuestion && !askValue ? "직접 입력으로 대체..." : "무엇이든 물어보세요..."}
-            aria-label="직접 질문 입력"
-          />
-          {!chartAvailable && (
-            <span className="void-dock-chart-notice">차트 연산 대기 중</span>
-          )}
+      {showCreditPopup ? (
+        <div className="void-credit-modal" role="dialog" aria-modal="true" aria-labelledby="void-credit-modal-title">
+          <div className="void-credit-modal-backdrop" onClick={() => setShowCreditPopup(false)} />
+          <div className="void-credit-modal-panel">
+            <div className="void-credit-modal-copy">
+              <p className="void-credit-modal-eyebrow">VOID</p>
+              <h2 id="void-credit-modal-title" className="void-credit-modal-title">크레딧이 부족합니다</h2>
+              <p className="void-credit-modal-description">원하는 상품을 선택해 주세요.</p>
+            </div>
+            <VoidPaywall
+              remainingCredits={voidCredits}
+              showVipUpsell={true}
+              onDismiss={() => setShowCreditPopup(false)}
+            />
+          </div>
         </div>
-        <button
-          type="button"
-          className={`void-dock-buy${!canBuy || isPending ? " void-dock-buy-off" : ""}`}
-          aria-label={canSend ? "분석 실행" : "AI 해석 구매"}
-          aria-disabled={!canBuy || isPending}
-          onClick={handleBuy}
-        >
-          {isPending ? "···" : canSend ? "보내기" : "구매"}
-        </button>
-      </div>
+      ) : null}
     </div>
   );
 }

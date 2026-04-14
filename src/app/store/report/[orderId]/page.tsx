@@ -8,6 +8,8 @@ import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session"
 import { getOrder, setOrderReportJson } from "@/lib/server/order-store";
 import { generateAreaReport } from "@/lib/server/area-report";
 import { generateYearlyReport } from "@/lib/server/yearly-report";
+import { isAnnualReportProductId, isAreaReportProductId } from "@/lib/products";
+import { getUnifiedPurchaseStateSafe } from "@/lib/server/purchase-state";
 import type { AreaReport, AreaSection } from "@/lib/server/area-report";
 import type { YearlyReport, SeasonEntry } from "@/lib/server/yearly-report";
 
@@ -189,6 +191,56 @@ export default async function StoreReportPage({
   const claims = verifySessionToken(token);
   if (!claims) redirect("/account-access");
 
+  if (orderId === "yearly" || orderId === "area") {
+    const purchaseState = getUnifiedPurchaseStateSafe(claims.userId);
+    const hasAccess = orderId === "yearly"
+      ? purchaseState?.annualReportOwned
+      : purchaseState?.areaReportOwned;
+    let yearlyReport: YearlyReport | null = null;
+    let areaReport: AreaReport | null = null;
+
+    if (!hasAccess) {
+      redirect("/store");
+    }
+
+    try {
+      if (orderId === "yearly") {
+        yearlyReport = await generateYearlyReport(claims.userId);
+      }
+
+      if (orderId === "area") {
+        areaReport = await generateAreaReport(claims.userId);
+      }
+    } catch {
+      // fall through to the shared error screen below
+    }
+
+    if (yearlyReport) {
+      return (
+        <main className="screen">
+          <YearlyReportView report={yearlyReport} />
+          <BottomNav />
+        </main>
+      );
+    }
+
+    if (areaReport) {
+      return (
+        <main className="screen luna-article-screen">
+          <AreaReportView report={areaReport} />
+          <BottomNav />
+        </main>
+      );
+    }
+
+    return (
+      <main className="screen luna-article-screen">
+        <ErrorScreen />
+        <BottomNav />
+      </main>
+    );
+  }
+
   let order = getOrder(orderId);
   if (!order || order.userId !== claims.userId) notFound();
   if (order.status !== "paid") redirect("/store");
@@ -197,18 +249,18 @@ export default async function StoreReportPage({
 
   // Area report: always regenerate with today's transits (never static-cache).
   // Yearly report: generate once and persist (static for the purchased year).
-  if (productId === "area" || !order.reportJson) {
+  if (isAreaReportProductId(productId) || isAnnualReportProductId(productId) || !order.reportJson) {
     try {
       let reportJson: string | null = null;
-      if (productId === "area") {
+      if (isAreaReportProductId(productId)) {
         const r = await generateAreaReport(claims.userId);
         if (r) reportJson = JSON.stringify(r);
-      } else if (productId === "yearly") {
+      } else if (isAnnualReportProductId(productId)) {
         const r = await generateYearlyReport(claims.userId);
         if (r) reportJson = JSON.stringify(r);
       }
       if (reportJson) {
-        if (productId !== "area") {
+        if (!isAreaReportProductId(productId)) {
           // Only persist yearly reports; area reports are always fresh
           setOrderReportJson(orderId, reportJson);
           order = getOrder(orderId)!;
@@ -233,11 +285,11 @@ export default async function StoreReportPage({
   let yearlyReport: YearlyReport | null = null;
 
   try {
-    if (productId === "area") {
+    if (isAreaReportProductId(productId)) {
       areaReport = JSON.parse(order.reportJson) as AreaReport;
     }
 
-    if (productId === "yearly") {
+    if (isAnnualReportProductId(productId)) {
       yearlyReport = JSON.parse(order.reportJson) as YearlyReport;
     }
   } catch {
