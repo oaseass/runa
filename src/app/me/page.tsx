@@ -23,6 +23,11 @@ import {
   getUserPreferences,
   getUserPhoneNumber,
 } from "@/lib/server/settings-store";
+import {
+  TEMP_PURCHASE_COOKIE_NAME,
+  getEffectivePurchaseState,
+  readTemporaryPurchaseState,
+} from "@/lib/server/temporary-purchase";
 import { UsernameForm } from "../settings/_components/UsernameForm";
 import { NotificationToggles } from "../settings/_components/NotificationToggles";
 import { logoutAction } from "../settings/_actions/settingsActions";
@@ -656,7 +661,12 @@ export default async function MePage({
 
   // Payment check
   const skipPayment       = process.env.SKIP_PAYMENT === "true" || process.env.NEXT_PUBLIC_SKIP_PAYMENT === "true";
-  const purchaseState     = skipPayment ? null : getUnifiedPurchaseStateSafe(session.userId);
+  const purchaseState     = skipPayment
+    ? null
+    : getEffectivePurchaseState(
+        getUnifiedPurchaseStateSafe(session.userId),
+        readTemporaryPurchaseState(cookieStore.get(TEMP_PURCHASE_COOKIE_NAME)?.value),
+      );
   const hasMembership     = skipPayment || (purchaseState?.isVip ?? false);
   const hasYearly         = skipPayment || (purchaseState?.annualReportOwned ?? false);
   const hasAreaReport     = skipPayment || (purchaseState?.areaReportOwned ?? false);

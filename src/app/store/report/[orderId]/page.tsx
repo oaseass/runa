@@ -10,6 +10,11 @@ import { generateAreaReport } from "@/lib/server/area-report";
 import { generateYearlyReport } from "@/lib/server/yearly-report";
 import { isAnnualReportProductId, isAreaReportProductId } from "@/lib/products";
 import { getUnifiedPurchaseStateSafe } from "@/lib/server/purchase-state";
+import {
+  TEMP_PURCHASE_COOKIE_NAME,
+  getEffectivePurchaseState,
+  readTemporaryPurchaseState,
+} from "@/lib/server/temporary-purchase";
 import type { AreaReport, AreaSection } from "@/lib/server/area-report";
 import type { YearlyReport, SeasonEntry } from "@/lib/server/yearly-report";
 
@@ -192,7 +197,10 @@ export default async function StoreReportPage({
   if (!claims) redirect("/account-access");
 
   if (orderId === "yearly" || orderId === "area") {
-    const purchaseState = getUnifiedPurchaseStateSafe(claims.userId);
+    const purchaseState = getEffectivePurchaseState(
+      getUnifiedPurchaseStateSafe(claims.userId),
+      readTemporaryPurchaseState(cookieStore.get(TEMP_PURCHASE_COOKIE_NAME)?.value),
+    );
     const hasAccess = orderId === "yearly"
       ? purchaseState?.annualReportOwned
       : purchaseState?.areaReportOwned;

@@ -2,8 +2,13 @@ import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { cookies } from "next/headers";
 import { AUTH_COOKIE_NAME, verifySessionToken } from "@/lib/server/auth-session";
-import { checkVip, getEntitlement } from "@/lib/server/entitlement-store";
+import { getUnifiedPurchaseStateSafe } from "@/lib/server/purchase-state";
 import { SKUS, formatAmount, VIP_MONTHLY, VIP_YEARLY, ANNUAL_REPORT, AREA_READING } from "@/lib/products";
+import {
+  TEMP_PURCHASE_COOKIE_NAME,
+  getEffectivePurchaseState,
+  readTemporaryPurchaseState,
+} from "@/lib/server/temporary-purchase";
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -12,12 +17,17 @@ export default async function ShopPage() {
   const token   = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   const claims  = token ? verifySessionToken(token) : null;
   const userId  = claims?.userId ?? null;
+  const temporaryPurchaseState = readTemporaryPurchaseState(
+    cookieStore.get(TEMP_PURCHASE_COOKIE_NAME)?.value,
+  );
 
-  const isVip         = userId ? checkVip(userId) : false;
-  const ent           = userId ? getEntitlement(userId) : null;
-  const annualOwned   = (ent?.annualReportOwned ?? 0) > 0;
-  const areaOwned     = (ent?.areaReportsOwned  ?? 0) > 0;
-  const voidCredits   = ent?.voidCredits ?? 0;
+  const purchaseState = userId
+    ? getEffectivePurchaseState(getUnifiedPurchaseStateSafe(userId), temporaryPurchaseState)
+    : null;
+  const isVip         = purchaseState?.isVip ?? false;
+  const annualOwned   = purchaseState?.annualReportOwned ?? false;
+  const areaOwned     = purchaseState?.areaReportOwned ?? false;
+  const voidCredits   = purchaseState?.voidCredits ?? 0;
 
   return (
     <main className="lsp-screen">

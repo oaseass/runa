@@ -16,6 +16,11 @@ import {
   isVipCheckoutProductId,
 } from "@/lib/products";
 import { getUnifiedPurchaseStateSafe } from "@/lib/server/purchase-state";
+import {
+  TEMP_PURCHASE_COOKIE_NAME,
+  getEffectivePurchaseState,
+  readTemporaryPurchaseState,
+} from "@/lib/server/temporary-purchase";
 import { CheckoutPurchasePanel } from "@/components/store/CheckoutPurchasePanel";
 
 export default async function StoreCheckoutPage({
@@ -39,7 +44,10 @@ export default async function StoreCheckoutPage({
     redirect(`/account-access?next=/store/checkout?product=${productId}`);
   }
 
-  const purchaseState = getUnifiedPurchaseStateSafe(claims.userId);
+  const purchaseState = getEffectivePurchaseState(
+    getUnifiedPurchaseStateSafe(claims.userId),
+    readTemporaryPurchaseState(cookieStore.get(TEMP_PURCHASE_COOKIE_NAME)?.value),
+  );
 
   if (isVipCheckoutProductId(productId) && purchaseState?.isVip) {
     redirect("/home");

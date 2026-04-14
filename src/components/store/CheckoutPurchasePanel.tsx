@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { purchaseWithNativeIap, getNativePlatform } from "@/lib/native-iap";
 import { TossPaymentWidget } from "@/components/TossPaymentWidget";
 import { NativePurchaseRestoreCard } from "@/components/store/NativePurchaseRestoreCard";
-import { devPurchaseAction } from "@/app/store/_actions/devPurchaseAction";
 
 type CheckoutPurchasePanelProps = {
   productId: string;
@@ -20,6 +19,12 @@ type CheckoutPurchasePanelProps = {
 type CreateOrderResponse = {
   ok: boolean;
   orderId?: string;
+  message?: string;
+};
+
+type TemporaryPurchaseResponse = {
+  ok: boolean;
+  redirectTo?: string;
   message?: string;
 };
 
@@ -40,6 +45,8 @@ export function CheckoutPurchasePanel({
   const [webOrderId, setWebOrderId] = useState<string | null>(orderId ?? null);
   const [orderPreparing, setOrderPreparing] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [temporaryPurchaseLoading, setTemporaryPurchaseLoading] = useState(false);
+  const [temporaryPurchaseError, setTemporaryPurchaseError] = useState<string | null>(null);
 
   useEffect(() => {
     setPlatform(getNativePlatform());
@@ -130,6 +137,64 @@ export function CheckoutPurchasePanel({
     }
   }
 
+  async function handleTemporaryPurchase() {
+    setTemporaryPurchaseError(null);
+    setTemporaryPurchaseLoading(true);
+
+    try {
+      const response = await fetch("/api/store/temporary-purchase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId,
+          existingOrderId: webOrderId ?? orderId ?? null,
+        }),
+      });
+
+      const result = (await response.json().catch(() => ({ ok: false }))) as TemporaryPurchaseResponse;
+      if (!response.ok || !result.ok || !result.redirectTo) {
+        throw new Error(result.message ?? "임시 결제를 처리하지 못했어요.");
+      }
+
+      window.location.href = result.redirectTo;
+    } catch (temporaryPurchaseFailure) {
+      setTemporaryPurchaseError(
+        temporaryPurchaseFailure instanceof Error
+          ? temporaryPurchaseFailure.message
+          : "임시 결제를 처리하지 못했어요.",
+      );
+      setTemporaryPurchaseLoading(false);
+    }
+  }
+
+  function renderTemporaryPurchaseBypass(note: string, marginTop: string) {
+    if (!showTemporaryPurchaseBypass) {
+      return null;
+    }
+
+    return (
+      <div style={{ marginTop }}>
+        <button
+          type="button"
+          className="luna-settings-form-submit"
+          style={{ width: "100%" }}
+          onClick={handleTemporaryPurchase}
+          disabled={temporaryPurchaseLoading}
+        >
+          {temporaryPurchaseLoading ? "임시 결제 처리 중..." : "임시 결제 완료 처리"}
+        </button>
+        <p className="luna-settings-note" style={{ marginTop: "0.55rem" }}>
+          {note}
+        </p>
+        {temporaryPurchaseError && (
+          <p className="luna-settings-note" style={{ marginTop: "0.45rem", color: "#ef4444" }}>
+            {temporaryPurchaseError}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   const showTemporaryPurchaseBypass = allowTemporaryPurchaseBypass;
 
   if (!ready) {
@@ -185,17 +250,9 @@ export function CheckoutPurchasePanel({
           앱 안에서는 웹 결제가 아니라 스토어 결제로 처리됩니다. 결제 완료 후 소유 상태와 화면을 즉시 동기화합니다.
         </p>
 
-        {showTemporaryPurchaseBypass && (
-          <form action={devPurchaseAction} style={{ marginTop: "0.9rem" }}>
-            <input type="hidden" name="productId" value={productId} />
-            <input type="hidden" name="existingOrderId" value={webOrderId ?? orderId ?? ""} />
-            <button type="submit" className="luna-settings-form-submit" style={{ width: "100%" }}>
-              임시 결제 완료 처리
-            </button>
-            <p className="luna-settings-note" style={{ marginTop: "0.55rem" }}>
-              결제 연동 전 테스트용 임시 버튼입니다. 누르면 실제 결제 없이 구매 완료 상태로 처리됩니다.
-            </p>
-          </form>
+        {renderTemporaryPurchaseBypass(
+          "결제 연동 전 테스트용 임시 버튼입니다. 누르면 실제 결제 없이 구매 완료 상태로 처리됩니다.",
+          "0.9rem",
         )}
 
         <NativePurchaseRestoreCard mode="inline" reloadOnSuccess />
@@ -210,17 +267,9 @@ export function CheckoutPurchasePanel({
         <p>
           NEXT_PUBLIC_TOSS_CLIENT_KEY 환경 변수에 토스페이먼츠 테스트 클라이언트 키를 입력해 주세요.
         </p>
-        {showTemporaryPurchaseBypass && (
-          <form action={devPurchaseAction} style={{ marginTop: "1rem" }}>
-            <input type="hidden" name="productId" value={productId} />
-            <input type="hidden" name="existingOrderId" value={webOrderId ?? orderId ?? ""} />
-            <button type="submit" className="luna-settings-form-submit" style={{ width: "100%" }}>
-              임시 결제 완료 처리
-            </button>
-            <p className="luna-settings-note" style={{ marginTop: "0.55rem" }}>
-              지금은 테스트용으로 실제 결제 없이 구매 완료 상태를 만듭니다.
-            </p>
-          </form>
+        {renderTemporaryPurchaseBypass(
+          "지금은 테스트용으로 실제 결제 없이 구매 완료 상태를 만듭니다.",
+          "1rem",
         )}
       </div>
     );
@@ -256,17 +305,9 @@ export function CheckoutPurchasePanel({
       <p className="luna-settings-note" style={{ marginTop: "1rem" }}>
         결제는 토스페이먼츠가 안전하게 처리합니다. 테스트 모드에서는 실제 결제가 이루어지지 않습니다.
       </p>
-      {showTemporaryPurchaseBypass && (
-        <form action={devPurchaseAction} style={{ marginTop: "0.9rem" }}>
-          <input type="hidden" name="productId" value={productId} />
-          <input type="hidden" name="existingOrderId" value={webOrderId ?? orderId ?? ""} />
-          <button type="submit" className="luna-settings-form-submit" style={{ width: "100%" }}>
-            임시 결제 완료 처리
-          </button>
-          <p className="luna-settings-note" style={{ marginTop: "0.55rem" }}>
-            실제 결제 연동 전 상태 검증용 임시 버튼입니다.
-          </p>
-        </form>
+      {renderTemporaryPurchaseBypass(
+        "실제 결제 연동 전 상태 검증용 임시 버튼입니다.",
+        "0.9rem",
       )}
     </>
   );

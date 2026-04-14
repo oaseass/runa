@@ -1,5 +1,11 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { getVoidEligibility } from "@/lib/server/void-eligibility";
+import {
+  TEMP_PURCHASE_COOKIE_NAME,
+  getEffectivePurchaseState,
+  readTemporaryPurchaseState,
+} from "@/lib/server/temporary-purchase";
 import { VoidEligibilityProvider } from "./_context/VoidEligibilityContext";
 
 /** Redirect destination for each missing birth field */
@@ -43,14 +49,22 @@ export default async function VoidLayout({
 
   // eligibility.status === "chart-ready"
   const skipPayment = process.env.SKIP_PAYMENT === "true" || process.env.NEXT_PUBLIC_SKIP_PAYMENT === "true";
+  const cookieStore = await cookies();
+  const temporaryPurchaseState = readTemporaryPurchaseState(
+    cookieStore.get(TEMP_PURCHASE_COOKIE_NAME)?.value,
+  );
   let purchaseState = null;
 
   if (!skipPayment) {
     try {
       const { getUnifiedPurchaseStateSafe } = await import("@/lib/server/purchase-state");
-      purchaseState = getUnifiedPurchaseStateSafe(eligibility.userId);
+      purchaseState = getEffectivePurchaseState(
+        getUnifiedPurchaseStateSafe(eligibility.userId),
+        temporaryPurchaseState,
+      );
     } catch (error) {
       console.error("[void/layout] purchase-state import fallback", error);
+      purchaseState = getEffectivePurchaseState(null, temporaryPurchaseState);
     }
   }
 

@@ -6,6 +6,11 @@ import BottomNav from "@/components/BottomNav";
 import BackButton from "@/components/BackButton";
 import { getLatestPaidOrderByProduct, type ProductId } from "@/lib/server/order-store";
 import { getUnifiedPurchaseStateSafe } from "@/lib/server/purchase-state";
+import {
+  TEMP_PURCHASE_COOKIE_NAME,
+  getEffectivePurchaseState,
+  readTemporaryPurchaseState,
+} from "@/lib/server/temporary-purchase";
 import { devPurchaseAction } from "./_actions/devPurchaseAction";
 
 // ── Zodiac sign list ───────────────────────────────────────────────────────────
@@ -31,7 +36,12 @@ export default async function StorePage() {
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
   const claims = verifySessionToken(token);
-  const purchaseState = claims ? getUnifiedPurchaseStateSafe(claims.userId) : null;
+  const purchaseState = claims
+    ? getEffectivePurchaseState(
+        getUnifiedPurchaseStateSafe(claims.userId),
+        readTemporaryPurchaseState(cookieStore.get(TEMP_PURCHASE_COOKIE_NAME)?.value),
+      )
+    : null;
   const isDevSkip = process.env.SKIP_PAYMENT === "true" || process.env.NEXT_PUBLIC_SKIP_PAYMENT === "true";
 
   function resultHref(productIds: ProductId[], fallbackHref: string): string {

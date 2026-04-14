@@ -5,6 +5,14 @@ import { cookies } from "next/headers";
 import { verifySessionToken } from "@/lib/server/auth-session";
 import { getVoidEligibility } from "@/lib/server/void-eligibility";
 import type { CategoryKey } from "@/app/void/types";
+import {
+  TEMP_PURCHASE_COOKIE_NAME,
+  consumeTemporaryVoidCredit,
+  createTemporaryPurchaseCookieValue,
+  getEffectivePurchaseState,
+  getTemporaryPurchaseCookieOptions,
+  readTemporaryPurchaseState,
+} from "@/lib/server/temporary-purchase";
 
 const VALID_CATEGORIES: CategoryKey[] = ["self", "love", "work", "social"];
 
@@ -36,6 +44,9 @@ export async function createAnalysisRequestAction(formData: FormData) {
   if (!claims) redirect("/account-access");
 
   const { userId } = claims;
+  const temporaryPurchaseState = readTemporaryPurchaseState(
+    cookieStore.get(TEMP_PURCHASE_COOKIE_NAME)?.value,
+  );
 
   // 2. Re-validate eligibility
   const eligibility = await getVoidEligibility();
@@ -74,14 +85,43 @@ export async function createAnalysisRequestAction(formData: FormData) {
         import("@/lib/server/purchase-state"),
         import("@/lib/server/entitlement-store"),
       ]);
-      const purchaseState = getUnifiedPurchaseState(userId);
-      const isAdminVip = purchaseState.isVip && purchaseState.vipSource === "admin";
-      if (!isAdminVip && !consumeVoidCredit(userId)) {
+      const persistedPurchaseState = getUnifiedPurchaseState(userId);
+      const purchaseState = getEffectivePurchaseState(
+        persistedPurchaseState,
+        temporaryPurchaseState,
+      );
+      const isAdminVip = Boolean(
+        persistedPurchaseState.isVip && persistedPurchaseState.vipSource === "admin",
+      );
+      const usesTemporaryCredits =
+        (temporaryPurchaseState?.voidCredits ?? 0) > (persistedPurchaseState.voidCredits ?? 0);
+
+      if (isAdminVip) {
+        // Keep the original admin bypass.
+      } else if (usesTemporaryCredits) {
+        const nextTemporaryState = consumeTemporaryVoidCredit(temporaryPurchaseState);
+        if (!nextTemporaryState) {
+          redirect(`/void/${category}?gate=no-credits`);
+        }
+        cookieStore.set(
+          TEMP_PURCHASE_COOKIE_NAME,
+          createTemporaryPurchaseCookieValue(nextTemporaryState),
+          getTemporaryPurchaseCookieOptions(),
+        );
+      } else if (!purchaseState?.voidCredits || !consumeVoidCredit(userId)) {
         redirect(`/void/${category}?gate=no-credits`);
       }
     } catch (error) {
       console.error("[void/createAnalysisRequest] purchase-state fallback", error);
-      redirect(`/void/${category}?gate=no-credits`);
+      const nextTemporaryState = consumeTemporaryVoidCredit(temporaryPurchaseState);
+      if (!nextTemporaryState) {
+        redirect(`/void/${category}?gate=no-credits`);
+      }
+      cookieStore.set(
+        TEMP_PURCHASE_COOKIE_NAME,
+        createTemporaryPurchaseCookieValue(nextTemporaryState),
+        getTemporaryPurchaseCookieOptions(),
+      );
     }
   }
 
