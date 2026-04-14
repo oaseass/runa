@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { getVoidEligibility } from "@/lib/server/void-eligibility";
-import { getUnifiedPurchaseState } from "@/lib/server/purchase-state";
 import { VoidEligibilityProvider } from "./_context/VoidEligibilityContext";
 
 /** Redirect destination for each missing birth field */
@@ -48,9 +47,10 @@ export default async function VoidLayout({
 
   if (!skipPayment) {
     try {
-      purchaseState = getUnifiedPurchaseState(eligibility.userId);
+      const { getUnifiedPurchaseStateSafe } = await import("@/lib/server/purchase-state");
+      purchaseState = getUnifiedPurchaseStateSafe(eligibility.userId);
     } catch (error) {
-      console.error("[void/layout] purchase-state fallback", error);
+      console.error("[void/layout] purchase-state import fallback", error);
     }
   }
 

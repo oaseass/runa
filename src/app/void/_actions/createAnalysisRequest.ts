@@ -3,21 +3,17 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { verifySessionToken } from "@/lib/server/auth-session";
-import { consumeVoidCredit } from "@/lib/server/entitlement-store";
-import { getUnifiedPurchaseState } from "@/lib/server/purchase-state";
 import { getVoidEligibility } from "@/lib/server/void-eligibility";
-import { createVoidAnalysisRequest, updateVoidAnalysisRequest } from "@/lib/server/void-store";
-import { generateVoidAnalysis } from "@/lib/server/void-analysis";
 import type { CategoryKey } from "@/app/void/types";
 
 const VALID_CATEGORIES: CategoryKey[] = ["self", "love", "work", "social"];
 
-function isReadonlySqliteError(error: unknown) {
+function isUnavailableSqliteError(error: unknown) {
   return Boolean(
     error &&
     typeof error === "object" &&
     "code" in error &&
-    (error as { code?: string }).code === "SQLITE_READONLY"
+    ["SQLITE_READONLY", "SQLITE_CANTOPEN"].includes((error as { code?: string }).code ?? "")
   );
 }
 
@@ -74,6 +70,10 @@ export async function createAnalysisRequestAction(formData: FormData) {
 
   if (!skipPayment) {
     try {
+      const [{ getUnifiedPurchaseState }, { consumeVoidCredit }] = await Promise.all([
+        import("@/lib/server/purchase-state"),
+        import("@/lib/server/entitlement-store"),
+      ]);
       const purchaseState = getUnifiedPurchaseState(userId);
       const isAdminVip = purchaseState.isVip && purchaseState.vipSource === "admin";
       if (!isAdminVip && !consumeVoidCredit(userId)) {
@@ -88,6 +88,7 @@ export async function createAnalysisRequestAction(formData: FormData) {
   // 4. Persist record with status "generating"
   let record;
   try {
+    const { createVoidAnalysisRequest } = await import("@/lib/server/void-store");
     record = createVoidAnalysisRequest({
       userId,
       category,
@@ -97,7 +98,7 @@ export async function createAnalysisRequestAction(formData: FormData) {
       initialStatus: "generating",
     });
   } catch (error) {
-    if (isReadonlySqliteError(error)) {
+    if (isUnavailableSqliteError(error)) {
       redirect(`/void/result?${fallbackParams.toString()}`);
     }
     throw error;
@@ -108,6 +109,7 @@ export async function createAnalysisRequestAction(formData: FormData) {
   let finalStatus: "complete" | "chart_missing" | "failed" = "failed";
 
   try {
+    const { generateVoidAnalysis } = await import("@/lib/server/void-analysis");
     const output = await generateVoidAnalysis(userId, category, questionText);
     if (output) {
       analysisJson = JSON.stringify(output);
@@ -121,9 +123,10 @@ export async function createAnalysisRequestAction(formData: FormData) {
   }
 
   try {
+    const { updateVoidAnalysisRequest } = await import("@/lib/server/void-store");
     updateVoidAnalysisRequest(record.id, { status: finalStatus, analysisJson });
   } catch (error) {
-    if (isReadonlySqliteError(error)) {
+    if (isUnavailableSqliteError(error)) {
       redirect(`/void/result?${fallbackParams.toString()}`);
     }
     throw error;
